@@ -8,6 +8,12 @@
     },
     {
       "path": "./apps/pokemon"
+    },
+    {
+      "path": "./context/pokedex"
+    },
+    {
+      "path": "./data/main"
     }
   ]
 }

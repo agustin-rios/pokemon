@@ -74,8 +74,14 @@
     }
   ],
   "targetDefaults": {
+    "build": {
+      "dependsOn": ["^build", "^generate"]
+    },
+    "dev": {
+      "dependsOn": ["^generate"]
+    },
     "test": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build", "^generate"]
     }
   },
   "generators": {

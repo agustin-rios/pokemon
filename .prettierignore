@@ -1,10 +1,2 @@
-# Add files here to ignore them from prettier formatting
-/dist
-/coverage
-/.nx/cache
-/.nx/workspace-data
+# Prettier ya excluye lo que ignora .gitignore; aquí solo va lo versionado que no se formatea.
 pnpm-lock.yaml
-
-# React Router (salida de build y tipos generados)
-build
-.react-router

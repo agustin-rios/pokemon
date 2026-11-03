@@ -23,16 +23,24 @@ export default [
         {
           enforceBuildableLibDependency: true,
           allow: ['^.*/eslint(\\.base)?\\.config\\.[cm]?[jt]s$'],
-          // type:  app | e2e | lib — nadie importa apps ni e2e; todo se comparte vía libs.
-          // scope: pokemon | shared — un scope solo usa lo suyo y lo compartido.
+          // type: app (compone) → context (dominio hexagonal) → data (Prisma) → lib (compartido).
+          // Nadie importa apps ni e2e, y un context no importa a otro: lo que cruza lo compone la app.
           depConstraints: [
-            { sourceTag: 'type:app', onlyDependOnLibsWithTags: ['type:lib'] },
-            { sourceTag: 'type:e2e', onlyDependOnLibsWithTags: ['type:lib'] },
-            { sourceTag: 'type:lib', onlyDependOnLibsWithTags: ['type:lib'] },
             {
-              sourceTag: 'scope:pokemon',
-              onlyDependOnLibsWithTags: ['scope:pokemon', 'scope:shared'],
+              sourceTag: 'type:app',
+              onlyDependOnLibsWithTags: [
+                'type:context',
+                'type:data',
+                'type:lib',
+              ],
             },
+            { sourceTag: 'type:e2e', onlyDependOnLibsWithTags: ['type:lib'] },
+            {
+              sourceTag: 'type:context',
+              onlyDependOnLibsWithTags: ['type:data', 'type:lib'],
+            },
+            { sourceTag: 'type:data', onlyDependOnLibsWithTags: ['type:lib'] },
+            { sourceTag: 'type:lib', onlyDependOnLibsWithTags: ['type:lib'] },
             {
               sourceTag: 'scope:shared',
               onlyDependOnLibsWithTags: ['scope:shared'],

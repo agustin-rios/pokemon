@@ -1,7 +1,11 @@
 packages:
   - 'apps/*'
   - 'libs/*'
+  - 'context/*'
+  - 'data/*'
 allowBuilds:
+  '@prisma/engines': true
   '@swc/core': true
   esbuild: true
   nx: true
+  prisma: true
