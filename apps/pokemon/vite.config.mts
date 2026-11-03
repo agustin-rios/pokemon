@@ -19,9 +19,8 @@ export default defineConfig(() => ({
   // worker: {
   //  plugins: [],
   // },
+  // La salida la define React Router (react-router.config.ts → build/client y build/server).
   build: {
-    outDir: './dist',
-    emptyOutDir: true,
     reportCompressedSize: true,
     commonjsOptions: {
       transformMixedEsModules: true,

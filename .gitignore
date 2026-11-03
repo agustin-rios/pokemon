@@ -49,3 +49,10 @@ vitest.config.*.timestamp*
 .vitest
 
 test-output
+.pnpm-store/
+*.tsbuildinfo
+
+# env
+.env
+.env.local
+.env.*.local

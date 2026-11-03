@@ -31,7 +31,7 @@ export default defineConfig({
     trace: 'on-first-retry',
   },
   webServer: {
-    command: 'npx nx run @pokemon/pokemon:dev',
+    command: 'pnpm exec nx run @pokemon/pokemon:dev',
     url: getReadyUrl('http://localhost:4200'),
     reuseExistingServer: true,
     cwd: workspaceRoot,

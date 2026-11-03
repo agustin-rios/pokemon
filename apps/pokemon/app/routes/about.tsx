@@ -1,7 +1,7 @@
-export default function AboutComponent() {
+export default function About() {
   return (
-    <div>
-      <h1>About!!!</h1>
-    </div>
+    <main>
+      <h1>Acerca de</h1>
+    </main>
   );
 }

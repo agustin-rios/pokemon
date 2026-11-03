@@ -2,19 +2,45 @@
   "name": "@pokemon/pokemon",
   "private": true,
   "type": "module",
-  "scripts": {},
+  "scripts": {
+    "typegen": "react-router typegen"
+  },
+  "nx": {
+    "tags": [
+      "type:app",
+      "scope:pokemon"
+    ],
+    "targets": {
+      "typegen": {
+        "cache": true,
+        "inputs": [
+          "{projectRoot}/app/**/*",
+          "{projectRoot}/react-router.config.ts"
+        ],
+        "outputs": [
+          "{projectRoot}/.react-router/types"
+        ]
+      },
+      "typecheck": {
+        "dependsOn": [
+          "typegen",
+          "^typecheck"
+        ]
+      }
+    }
+  },
   "sideEffects": false,
   "dependencies": {
-    "@react-router/node": "^7.14.2",
-    "@react-router/serve": "^7.14.2",
-    "isbot": "^4.4.0",
+    "@react-router/node": "^8.5.1",
+    "@react-router/serve": "^8.5.1",
+    "isbot": "^5.2.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-router": "^7.14.2"
+    "react-router": "^8.5.1"
   },
   "devDependencies": {
-    "@react-router/dev": "^7.14.2",
-    "@types/node": "^22.0.0",
+    "@react-router/dev": "^8.5.1",
+    "@types/node": "^24.19.2",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0"
   }

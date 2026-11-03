@@ -3,4 +3,8 @@
 /coverage
 /.nx/cache
 /.nx/workspace-data
-package-lock.json
+pnpm-lock.yaml
+
+# React Router (salida de build y tipos generados)
+build
+.react-router

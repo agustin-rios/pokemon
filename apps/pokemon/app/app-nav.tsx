@@ -4,10 +4,10 @@ export function AppNav() {
   return (
     <nav>
       <NavLink to="/" end>
-        Home
+        Inicio
       </NavLink>
       <NavLink to="/about" end>
-        About
+        Acerca de
       </NavLink>
     </nav>
   );

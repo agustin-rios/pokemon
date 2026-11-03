@@ -1,16 +1,18 @@
 import { createRoutesStub } from 'react-router';
 import { render, screen } from '@testing-library/react';
-import App from '../../app/app';
+import Home from '../../app/routes/home';
 
-test('renders loader data', async () => {
+test('renders the home heading', async () => {
   const ReactRouterStub = createRoutesStub([
     {
       path: '/',
-      Component: App,
+      Component: Home,
     },
   ]);
 
   render(<ReactRouterStub />);
 
-  expect(await screen.findByText('Hello there,')).toBeTruthy();
+  expect(
+    await screen.findByRole('heading', { level: 1, name: 'Pokemon' }),
+  ).toBeTruthy();
 });
