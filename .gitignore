@@ -13,7 +13,7 @@ test-output
 
 # Código generado
 .react-router
-data/*/generated
+db/*/generated
 
 # Nx
 .nx/cache
@@ -24,6 +24,9 @@ data/*/generated
 vite.config.*.timestamp*
 vitest.config.*.timestamp*
 .vitest
+
+# Python (DAGs de Airflow)
+__pycache__/
 
 # Entorno (los .env.example sí se versionan)
 .env

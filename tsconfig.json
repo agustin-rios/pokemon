@@ -13,7 +13,7 @@
       "path": "./context/pokedex"
     },
     {
-      "path": "./data/main"
+      "path": "./db/main"
     }
   ]
 }

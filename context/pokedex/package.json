@@ -25,6 +25,6 @@
     ]
   },
   "dependencies": {
-    "@pokemon/data-main": "workspace:*"
+    "@pokemon/db-main": "workspace:*"
   }
 }

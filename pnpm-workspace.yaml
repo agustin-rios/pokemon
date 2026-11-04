@@ -2,7 +2,7 @@ packages:
   - 'apps/*'
   - 'libs/*'
   - 'context/*'
-  - 'data/*'
+  - 'db/*'
 allowBuilds:
   '@prisma/engines': true
   '@swc/core': true

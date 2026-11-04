@@ -1,4 +1,4 @@
-import type { PrismaClient } from '@pokemon/data-main';
+import type { PrismaClient } from '@pokemon/db-main';
 import type { Pokemon } from '../../domain/index.ts';
 import type { PokemonRepository } from '../../application/index.ts';
 

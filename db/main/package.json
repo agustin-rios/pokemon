@@ -1,5 +1,5 @@
 {
-  "name": "@pokemon/data-main",
+  "name": "@pokemon/db-main",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -21,8 +21,8 @@
   },
   "nx": {
     "tags": [
-      "type:data",
-      "scope:data"
+      "type:db",
+      "scope:db"
     ],
     "targets": {
       "generate": {

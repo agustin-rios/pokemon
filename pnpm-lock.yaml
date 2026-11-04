@@ -174,11 +174,11 @@ importers:
 
   context/pokedex:
     dependencies:
-      '@pokemon/data-main':
+      '@pokemon/db-main':
         specifier: workspace:*
-        version: link:../../data/main
+        version: link:../../db/main
 
-  data/main:
+  db/main:
     dependencies:
       '@prisma/adapter-pg':
         specifier: ^7.10.1

@@ -1,0 +1,72 @@
+# Servicios del proyecto. Hoy: PostgreSQL + Apache Airflow (imagen oficial).
+#   docker compose up -d
+#   Postgres → localhost:5434 (postgres / postgres, db pokemon)
+#   Airflow  → http://localhost:8080 (airflow / airflow)
+name: pokemon
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: pokemon
+    ports:
+      - '${POSTGRES_PORT:-5434}:5432'
+    volumes:
+      # Desde Postgres 18 el volumen va en /var/lib/postgresql (no en .../data).
+      - postgres-data:/var/lib/postgresql
+    configs:
+      # Crea la base interna de Airflow (no carga datos). Solo corre con el volumen vacío.
+      - source: airflow-db
+        target: /docker-entrypoint-initdb.d/10-airflow-db.sql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d pokemon']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  airflow:
+    image: apache/airflow:3.3.2
+    # standalone: migra su base y corre UI/API, scheduler, dag-processor y triggerer
+    # en un solo contenedor (el modo de Airflow para desarrollo local).
+    # Antes escribe la clave fija del usuario: Airflow necesita ese archivo con
+    # permiso de escritura (lo usa como lock), así que no puede montarse.
+    command:
+      - bash
+      - -c
+      - |
+        echo '{"airflow": "airflow"}' > /opt/airflow/passwords.json
+        exec airflow standalone
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: airflow:admin
+      AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_PASSWORDS_FILE: /opt/airflow/passwords.json
+      AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW_JWT_SECRET:-airflow_jwt_secret}
+    ports:
+      - '${AIRFLOW_PORT:-8080}:8080'
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        ['CMD', 'curl', '--fail', 'http://localhost:8080/api/v2/monitor/health']
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    restart: unless-stopped
+
+configs:
+  airflow-db:
+    content: |
+      CREATE USER airflow WITH PASSWORD 'airflow';
+      CREATE DATABASE airflow OWNER airflow;
+
+volumes:
+  postgres-data:
