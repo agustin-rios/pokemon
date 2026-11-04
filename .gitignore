@@ -28,8 +28,11 @@ vite.config.*.timestamp*
 vitest.config.*.timestamp*
 .vitest
 
-# Python (DAGs de Airflow)
+# Python (scripts/, DAGs y sus tests)
 __pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
 
 # Entorno (los .env.example sí se versionan)
 .env
