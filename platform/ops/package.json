@@ -4,7 +4,7 @@
   "description": "CLI de operaciones (pnpm ops). Sin dependencias: Node 24 ejecuta el TypeScript directo.",
   "type": "module",
   "scripts": {
-    "test": "node --test \"src/**/*.test.ts\""
+    "test": "node --test \"tests/**/*.test.ts\""
   },
   "nx": {
     "tags": [

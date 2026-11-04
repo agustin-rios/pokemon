@@ -1,41 +1,23 @@
-import {
-  parseArgs,
-  UsageError,
-  type ArgSpec,
-  type ParsedArgs,
-} from './lib/args.ts';
-import { bold, error, info } from './lib/log.ts';
+import { parseArgs, UsageError } from './lib/args.ts';
+import { error, info } from './lib/log.ts';
+import { argSpecOf } from './commands/command.ts';
+import { findCommand, helpText } from './commands/index.ts';
 
-const HELP = `${bold('pnpm ops')} — operaciones del proyecto
-
-Todavía no hay comandos. Cada uno va en src/commands/ y se registra en COMMANDS (src/cli.ts).`;
-
-interface Command {
-  spec: ArgSpec;
-  run: (args: ParsedArgs) => Promise<number | void>;
-}
-
-/** "grupo acción" → comando; p. ej. 'data scrape': { spec, run }. */
-const COMMANDS: Record<string, Command> = {};
+const HELP_ARGS = new Set(['help', '--help', '-h']);
 
 async function main(argv: string[]): Promise<number> {
-  if (
-    argv.length === 0 ||
-    argv[0] === 'help' ||
-    argv[0] === '--help' ||
-    argv[0] === '-h'
-  ) {
-    info(HELP);
+  if (argv.length === 0 || HELP_ARGS.has(argv[0] ?? '')) {
+    info(helpText());
     return 0;
   }
   const name = `${argv[0]} ${argv[1] ?? ''}`.trim();
-  const command = COMMANDS[name];
+  const command = findCommand(name);
   if (!command) {
     throw new UsageError(
       `Comando desconocido: "${name}". \`pnpm ops help\` lista los comandos.`,
     );
   }
-  const args = parseArgs(argv.slice(2), command.spec);
+  const args = parseArgs(argv.slice(2), argSpecOf(command));
   if (args.positionals.length > 0) {
     throw new UsageError(
       `\`${name}\` no recibe argumentos sueltos: ${args.positionals.join(' ')}`,

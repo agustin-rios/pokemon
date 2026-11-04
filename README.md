@@ -47,18 +47,23 @@ docker compose down -v    # detiene y borra los datos
 
 - Un solo Postgres con dos bases: `pokemon` (la app) y `airflow` (estado interno de Airflow, creada al iniciar el volumen).
 - Airflow corre en modo `standalone`: UI/API, scheduler, dag-processor y triggerer en un contenedor, con LocalExecutor. Es el modo de Airflow para desarrollo local; si un componente se cae, el contenedor sigue arriba y queda `unhealthy` (`docker compose restart airflow`).
-- Los DAGs van en `airflow/dags/`. Un archivo nuevo tarda hasta 5 min en aparecer (los existentes se re-leen cada 30 s); para no esperar: `docker compose exec airflow airflow dags reserialize`.
+- Los DAGs van en `platform/airflow/dags/`. Un archivo nuevo tarda hasta 5 min en aparecer (los existentes se re-leen cada 30 s); para no esperar: `docker compose exec airflow airflow dags reserialize`.
 - Puertos configurables con `POSTGRES_PORT` y `AIRFLOW_PORT` (en un `.env` en la raíz).
 - El `DATABASE_URL` de `db/main/.env.example` apunta a este Postgres.
 
 ## Estructura de datos
 
-| Carpeta         | Para qué                                                              |
-| --------------- | --------------------------------------------------------------------- |
-| `data/`         | CSV de entrada que lee Airflow (no se versiona)                       |
-| `scripts/`      | Scripts que producen esos CSV                                         |
-| `airflow/dags/` | DAGs de Airflow                                                       |
-| `platform/ops/` | CLI `pnpm ops` (sin comandos todavía; cada uno va en `src/commands/`) |
+| Carpeta                  | Para qué                                                                                   |
+| ------------------------ | ------------------------------------------------------------------------------------------ |
+| `data/`                  | CSV de entrada que lee Airflow (no se versiona)                                            |
+| `scripts/`               | Scripts que producen esos CSV                                                              |
+| `platform/airflow/dags/` | DAGs de Airflow                                                                            |
+| `platform/ops/`          | CLI `pnpm ops`: comandos en `src/commands/` (registrados en `index.ts`), tests en `tests/` |
+
+```sh
+pnpm ops data scrape      # PokeAPI → data/pokemon.csv, types.csv, pokemon_types.csv (Pokémon 1–100; --limit para otro n)
+pnpm ops help
+```
 
 ## Arquitectura
 
@@ -66,7 +71,7 @@ docker compose down -v    # detiene y borra los datos
 - **context** (`context/<nombre>`): `domain` → `application` (ports y casos de uso) → `infra/adapters`. Un context no importa a otro.
 - **db** (`db/<nombre>`): schema, migraciones y cliente de Prisma. (`data/` queda para los CSV que consume Airflow.)
 - **lib** (`libs/`): código compartido.
-- **tool** (`platform/`): herramientas como `pnpm ops`; no las importa nadie.
+- **platform** (`platform/`): lo operativo, que no importa nadie: `ops` (CLI, tag `tool`) y `airflow` (DAGs en Python).
 
 Los límites los aplica `@nx/enforce-module-boundaries` (`eslint.config.mjs`) según los tags `type:` (`app`, `e2e`, `context`, `db`, `lib`, `tool`) de `nx.tags` en el `package.json` de cada proyecto. Un proyecto sin tags no puede importar nada.
 
