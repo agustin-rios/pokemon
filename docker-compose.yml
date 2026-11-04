@@ -1,7 +1,8 @@
-# Servicios del proyecto. Hoy: PostgreSQL + Apache Airflow (imagen oficial).
+# Servicios del proyecto. Hoy: PostgreSQL, migraciones y Apache Airflow (imagen oficial).
 #   docker compose up -d
 #   Postgres → localhost:5434 (postgres / postgres, db pokemon)
 #   Airflow  → http://localhost:8080 (airflow / airflow)
+# Orden: postgres sano → migrate crea tablas y constraints → airflow (el DAG solo carga datos).
 name: pokemon
 
 services:
@@ -27,6 +28,17 @@ services:
       retries: 10
     restart: unless-stopped
 
+  migrate:
+    # Aplica las migraciones de Prisma (db/main) y termina. Idempotente.
+    build:
+      context: .
+      dockerfile: db/main/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/pokemon
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   airflow:
     image: apache/airflow:3.3.2
     # standalone: migra su base y corre UI/API, scheduler, dag-processor y triggerer
@@ -46,13 +58,19 @@ services:
       AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: airflow:admin
       AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_PASSWORDS_FILE: /opt/airflow/passwords.json
       AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW_JWT_SECRET:-airflow_jwt_secret}
+      # Conexión `pokemon_db` a la base de la app: con ella el DAG carga y crea las vistas.
+      AIRFLOW_CONN_POKEMON_DB: postgresql://postgres:postgres@postgres:5432/pokemon
     ports:
       - '${AIRFLOW_PORT:-8080}:8080'
     volumes:
       - ./platform/airflow/dags:/opt/airflow/dags
+      # Los 6 CSV (pnpm ops data prepare). Solo lectura: el DAG nunca los modifica.
+      - ./data:/opt/airflow/data:ro
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       test:
         ['CMD', 'curl', '--fail', 'http://localhost:8080/api/v2/monitor/health']
