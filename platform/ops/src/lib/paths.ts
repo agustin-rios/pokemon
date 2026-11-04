@@ -9,6 +9,12 @@ export const REPO_ROOT = fileURLToPath(
 /** Carpeta de los CSV de entrada que lee Airflow. */
 export const DATA_DIR = resolve(REPO_ROOT, 'data');
 
+/** Script del desafío que genera trainers, captures y battles (no se modifica). */
+export const GENERATOR_SCRIPT = resolve(
+  REPO_ROOT,
+  'scripts/generate_pokemon_data.py',
+);
+
 /** Ruta relativa a la raíz para mensajes; absoluta si queda fuera del repo. */
 export function fromRoot(path: string): string {
   const rel = relative(REPO_ROOT, path);

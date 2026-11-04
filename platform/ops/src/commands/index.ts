@@ -1,12 +1,16 @@
 import { bold } from '../lib/log.ts';
 import type { Command } from './command.ts';
-import { dataScrape } from './data.ts';
+import { dataGenerate, dataPrepare, dataScrape } from './data.ts';
 
 /**
  * Todos los comandos de `pnpm ops`. Para agregar uno: créalo en su archivo de
  * grupo (src/commands/<grupo>.ts) y súmalo aquí; la ayuda sale de esta lista.
  */
-export const COMMANDS: readonly Command[] = [dataScrape];
+export const COMMANDS: readonly Command[] = [
+  dataScrape,
+  dataGenerate,
+  dataPrepare,
+];
 
 /** Título de cada grupo en la ayuda (el grupo es la primera palabra del nombre). */
 const GROUP_TITLES: Record<string, string> = {

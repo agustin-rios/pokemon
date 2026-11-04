@@ -12,7 +12,7 @@ Monorepo Nx con pnpm.
 
 ## Requisitos
 
-Node 24 (`nvm use`, ver `.nvmrc`), pnpm 10 (`corepack enable`) y Docker.
+Node 24 (`nvm use`, ver `.nvmrc`), pnpm 10 (`corepack enable`), Docker y Python 3.10+ (solo para `pnpm ops data generate`; usa la librería estándar).
 
 ## Comandos
 
@@ -62,6 +62,8 @@ docker compose down -v    # detiene y borra los datos
 
 ```sh
 pnpm ops data scrape      # PokeAPI → data/pokemon.csv, types.csv, pokemon_types.csv (Pokémon 1–100; --limit para otro n)
+pnpm ops data generate    # scripts/generate_pokemon_data.py con los ids de data/pokemon.csv → trainers.csv, captures.csv, battles.csv
+pnpm ops data prepare     # los dos anteriores en cadena: los 6 CSV juntos (data/ cambia solo si ambos terminan)
 pnpm ops help
 ```
 
