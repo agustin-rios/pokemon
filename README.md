@@ -8,10 +8,11 @@ Monorepo Nx con pnpm.
 | `@pokemon/pokemon-e2e`     | `apps/pokemon-e2e` | Tests e2e (Playwright)                                            |
 | `@pokemon/context-pokedex` | `context/pokedex`  | Lógica de negocio hexagonal ([README](context/pokedex/README.md)) |
 | `@pokemon/db-main`         | `db/main`          | Prisma 7 + PostgreSQL ([README](db/main/README.md))               |
+| `@pokemon/ops`             | `platform/ops`     | CLI de operaciones (`pnpm ops`), sin dependencias                 |
 
 ## Requisitos
 
-Node 24 (`nvm use`, ver `.nvmrc`) y pnpm 10 (`corepack enable`).
+Node 24 (`nvm use`, ver `.nvmrc`), pnpm 10 (`corepack enable`) y Docker.
 
 ## Comandos
 
@@ -50,14 +51,24 @@ docker compose down -v    # detiene y borra los datos
 - Puertos configurables con `POSTGRES_PORT` y `AIRFLOW_PORT` (en un `.env` en la raíz).
 - El `DATABASE_URL` de `db/main/.env.example` apunta a este Postgres.
 
+## Estructura de datos
+
+| Carpeta         | Para qué                                                              |
+| --------------- | --------------------------------------------------------------------- |
+| `data/`         | CSV de entrada que lee Airflow (no se versiona)                       |
+| `scripts/`      | Scripts que producen esos CSV                                         |
+| `airflow/dags/` | DAGs de Airflow                                                       |
+| `platform/ops/` | CLI `pnpm ops` (sin comandos todavía; cada uno va en `src/commands/`) |
+
 ## Arquitectura
 
 - **app**: hoy no depende de ningún context ni db. Si se conecta, el armado (casos de uso + adapters) va en `app/.server/`, que React Router nunca incluye en el bundle del navegador.
 - **context** (`context/<nombre>`): `domain` → `application` (ports y casos de uso) → `infra/adapters`. Un context no importa a otro.
 - **db** (`db/<nombre>`): schema, migraciones y cliente de Prisma. (`data/` queda para los CSV que consume Airflow.)
 - **lib** (`libs/`): código compartido.
+- **tool** (`platform/`): herramientas como `pnpm ops`; no las importa nadie.
 
-Los límites los aplica `@nx/enforce-module-boundaries` (`eslint.config.mjs`) según los tags `type:` (`app`, `e2e`, `context`, `db`, `lib`) de `nx.tags` en el `package.json` de cada proyecto. Un proyecto sin tags no puede importar nada.
+Los límites los aplica `@nx/enforce-module-boundaries` (`eslint.config.mjs`) según los tags `type:` (`app`, `e2e`, `context`, `db`, `lib`, `tool`) de `nx.tags` en el `package.json` de cada proyecto. Un proyecto sin tags no puede importar nada.
 
 Nuevo context: `pnpm nx g @nx/js:lib context/<nombre> --name=@pokemon/context-<nombre> --bundler=none --unitTestRunner=vitest --linter=eslint --tags=type:context,scope:<nombre>`; para consumirlo, agrégalo con `workspace:*` al `package.json` de quien lo use y corre `pnpm nx sync`.
 

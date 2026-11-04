@@ -37,6 +37,7 @@ export default [
             },
             { sourceTag: 'type:db', onlyDependOnLibsWithTags: ['type:lib'] },
             { sourceTag: 'type:lib', onlyDependOnLibsWithTags: ['type:lib'] },
+            { sourceTag: 'type:tool', onlyDependOnLibsWithTags: ['type:lib'] },
             {
               sourceTag: 'scope:shared',
               onlyDependOnLibsWithTags: ['scope:shared'],

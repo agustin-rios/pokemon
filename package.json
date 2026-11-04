@@ -14,7 +14,8 @@
     "test": "nx run-many -t test",
     "lint": "nx run-many -t lint",
     "typecheck": "nx run-many -t typecheck",
-    "e2e": "nx run-many -t e2e"
+    "e2e": "nx run-many -t e2e",
+    "ops": "node platform/ops/src/cli.ts"
   },
   "dependencies": {
     "@react-router/node": "^8.5.1",

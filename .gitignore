@@ -11,6 +11,9 @@ coverage
 test-output
 *.tsbuildinfo
 
+# CSV que producen los scripts (pnpm ops data …) y lee Airflow
+/data/
+
 # Código generado
 .react-router
 db/*/generated

@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "out-tsc",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "types": ["node"],
+    // Node ejecuta este código quitando los tipos, sin compilar: solo sintaxis
+    // borrable (sin enums ni parameter properties) e imports de tipos explícitos.
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    "noUncheckedIndexedAccess": true
+  },
+  "include": ["src/**/*.ts"]
+}
