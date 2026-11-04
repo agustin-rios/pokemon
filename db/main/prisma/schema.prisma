@@ -9,7 +9,91 @@ datasource db {
   provider = "postgresql"
 }
 
+/// types.csv — ids de la PokeAPI.
+model Type {
+  id      Int           @id
+  name    String        @unique
+  pokemon PokemonType[]
+
+  @@map("types")
+}
+
+/// pokemon.csv — id = n° de Pokédex.
 model Pokemon {
-  id   Int    @id
-  name String @unique
+  id             Int           @id
+  name           String        @unique
+  height         Int
+  weight         Int
+  baseExperience Int           @default(0) @map("base_experience")
+  spriteUrl      String?       @map("sprite_url")
+  types          PokemonType[]
+  captures       Capture[]
+
+  battlesAsA     Battle[]      @relation("BattlePokemonA")
+  battlesAsB     Battle[]      @relation("BattlePokemonB")
+  battlesWon     Battle[]      @relation("BattleWinner")
+
+  @@map("pokemon")
+}
+
+/// pokemon_types.csv — 1 o 2 tipos por Pokémon (slot).
+model PokemonType {
+  pokemonId Int     @map("pokemon_id")
+  typeId    Int     @map("type_id")
+  slot      Int     @db.SmallInt
+  
+  pokemon   Pokemon @relation(fields: [pokemonId], references: [id])
+  type      Type    @relation(fields: [typeId], references: [id])
+
+  @@id([pokemonId, typeId])
+  @@unique([pokemonId, slot])
+  @@index([typeId])
+  @@map("pokemon_types")
+}
+
+/// trainers.csv
+model Trainer {
+  id        Int       @id
+  name      String
+  region    String
+  createdAt DateTime  @map("created_at") @db.Date
+  captures  Capture[]
+
+  @@map("trainers")
+}
+
+/// captures.csv
+model Capture {
+  id         Int      @id
+  trainerId  Int      @map("trainer_id")
+  pokemonId  Int      @map("pokemon_id")
+  capturedAt DateTime @map("captured_at") @db.Timestamp(6)
+  level      Int      @db.SmallInt
+  location   String
+  trainer    Trainer  @relation(fields: [trainerId], references: [id])
+  pokemon    Pokemon  @relation(fields: [pokemonId], references: [id])
+
+  @@index([trainerId])
+  @@index([pokemonId])
+  @@index([capturedAt])
+  @@map("captures")
+}
+
+/// battles.csv — dos Pokémon, sin entrenadores.
+model Battle {
+  id              Int      @id
+  pokemonAId      Int      @map("pokemon_a_id")
+  pokemonBId      Int      @map("pokemon_b_id")
+  winnerId        Int      @map("winner_id")
+  foughtAt        DateTime @map("fought_at") @db.Timestamp(6)
+  durationSeconds Int      @map("duration_seconds")
+
+  pokemonA        Pokemon  @relation("BattlePokemonA", fields: [pokemonAId], references: [id])
+  pokemonB        Pokemon  @relation("BattlePokemonB", fields: [pokemonBId], references: [id])
+  winner          Pokemon  @relation("BattleWinner", fields: [winnerId], references: [id])
+
+  @@index([pokemonAId])
+  @@index([pokemonBId])
+  @@index([winnerId])
+  @@map("battles")
 }
