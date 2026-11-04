@@ -1,6 +1,6 @@
 /// <reference types='vitest' />
 import { defineConfig } from 'vite';
-import { reactRouter } from '@react-router/dev/vite';
+import react from '@vitejs/plugin-react';
 import { nxReadySignal } from '@nx/vite/plugins/nx-ready-signal.plugin';
 
 export default defineConfig(() => ({
@@ -9,14 +9,17 @@ export default defineConfig(() => ({
   server: {
     port: 4200,
     host: 'localhost',
+    // La API (apps/api) corre en :3000 con prefijo /api.
+    proxy: { '/api': 'http://localhost:3000' },
   },
   preview: {
     port: 4300,
     host: 'localhost',
   },
-  plugins: [!process.env.VITEST && reactRouter(), nxReadySignal()],
-  // La salida la define React Router (react-router.config.ts → build/client y build/server).
+  plugins: [react(), nxReadySignal()],
   build: {
+    outDir: './dist',
+    emptyOutDir: true,
     reportCompressedSize: true,
   },
   test: {

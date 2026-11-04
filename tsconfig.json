@@ -17,6 +17,9 @@
     },
     {
       "path": "./platform/ops"
+    },
+    {
+      "path": "./apps/api"
     }
   ]
 }

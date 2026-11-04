@@ -2,27 +2,13 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist",
+    "rootDir": "src",
     "lib": ["DOM", "DOM.Iterable", "ES2022"],
-    "types": ["@react-router/node", "vite/client", "node"],
-    "esModuleInterop": true,
+    "types": ["vite/client"],
     "jsx": "react-jsx",
-    "resolveJsonModule": true,
-    "allowJs": true,
     "forceConsistentCasingInFileNames": true,
-    "rootDir": ".",
-    "rootDirs": [".", "./.react-router/types"],
     "tsBuildInfoFile": "dist/tsconfig.app.tsbuildinfo"
   },
-  "include": [
-    "app/**/*.ts",
-    "app/**/*.tsx",
-    "app/**/*.js",
-    "app/**/*.jsx",
-    "**/.server/**/*.ts",
-    "**/.server/**/*.tsx",
-    "**/.client/**/*.ts",
-    "**/.client/**/*.tsx",
-    ".react-router/types/**/*"
-  ],
-  "exclude": ["out-tsc", "dist", "build"]
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["out-tsc", "dist"]
 }
