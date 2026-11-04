@@ -76,4 +76,4 @@ ALTER TABLE "battles" ADD CONSTRAINT "battles_winner_check"
   CHECK ("winner_id" IN ("pokemon_a_id", "pokemon_b_id"));
 
 ALTER TABLE "battles" ADD CONSTRAINT "battles_duration_seconds_check"
-  CHECK ("duration_seconds" > 0);
+  CHECK ("duration_seconds" >= 0);
