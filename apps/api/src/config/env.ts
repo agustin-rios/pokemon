@@ -11,6 +11,13 @@ export const envSchema = z
       .string()
       .min(1)
       .default('postgresql://postgres:postgres@localhost:5434/pokemon'),
+    // Airflow, para disparar el DAG de carga. Default: el de docker compose en dev.
+    AIRFLOW_URL: z
+      .url({ protocol: /^https?$/ })
+      .default('http://localhost:8080')
+      .transform((url) => url.replace(/\/+$/, '')),
+    AIRFLOW_USERNAME: z.string().min(1).default('airflow'),
+    AIRFLOW_PASSWORD: z.string().min(1).default('airflow'),
     // "*" → true: CORS refleja el origen de cada request.
     CORS_ALLOW_ORIGINS: z
       .string()

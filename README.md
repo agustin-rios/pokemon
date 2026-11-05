@@ -67,8 +67,9 @@ docker compose down -v    # detiene y borra los datos
 | `GET /reports/monthly-growth`       | Consulta A: capturas por mes y % de cambio vs. el mes anterior             |
 | `GET /reports/top-trainers`         | Consulta B: top 3 entrenadores por capturas en cada región                 |
 | `GET /reports/level-classification` | Consulta C: por tipo, capturas con nivel ≥ 50 y su porcentaje              |
+| `POST /etl/runs`                    | Dispara el DAG `pokemon_etl` en Airflow; 202 con la corrida encolada       |
 
-Errores: entrada inválida → 400, id inexistente → 404, datos aún no disponibles (la vista no existe) → 503. Las agregaciones (summary y A, B, C) corren en Postgres: cada endpoint lee una vista definida en `db/main/sql/views.sql` (contrato en [context/pokedex](context/pokedex/README.md)).
+Errores: entrada inválida → 400, id inexistente → 404, datos aún no disponibles (la vista no existe) → 503, Airflow no responde → 503, Airflow responde un error → 502. Las agregaciones (summary y A, B, C) corren en Postgres: cada endpoint lee una vista definida en `db/main/sql/views.sql` (contrato en [context/pokedex](context/pokedex/README.md)).
 
 ## Estructura de datos
 
