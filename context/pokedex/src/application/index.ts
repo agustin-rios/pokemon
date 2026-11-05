@@ -1,2 +1,3 @@
-export * from './pokemon-repository.ts';
-export * from './get-pokemon.ts';
+export * from './use-cases/index.ts';
+export * from './ports/index.ts';
+export { ValidationError } from './errors.ts';

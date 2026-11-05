@@ -1,2 +1,2 @@
-export * from './in-memory-pokemon-repository.ts';
-export * from './prisma-pokemon-repository.ts';
+export { PrismaPokemonRepository } from './PrismaPokemonRepository.ts';
+export { PrismaReportsRepository } from './PrismaReportsRepository.ts';
