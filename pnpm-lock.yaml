@@ -211,6 +211,13 @@ importers:
       '@pokemon/db-main':
         specifier: workspace:*
         version: link:../../db/main
+    devDependencies:
+      '@types/pg':
+        specifier: ^8.23.1
+        version: 8.23.1
+      pg:
+        specifier: ^8.23.1
+        version: 8.23.1
 
   db/main:
     dependencies:

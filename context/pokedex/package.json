@@ -26,5 +26,9 @@
   },
   "dependencies": {
     "@pokemon/db-main": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.23.1",
+    "pg": "^8.23.1"
   }
 }
