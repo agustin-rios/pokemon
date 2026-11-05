@@ -56,5 +56,5 @@ test('toDataset ordena por id y deduplica tipos, sin importar el orden de llegad
     { pokemon_id: 2, type_id: 4, slot: 2 },
     { pokemon_id: 4, type_id: 10, slot: 1 },
   ]);
-  assert.equal(dataset.pokemon[0]?.sprite_url, 'https://img/1.png');
+  assert.equal(dataset.pokemon[0]?.sprite, 'https://img/1.png');
 });

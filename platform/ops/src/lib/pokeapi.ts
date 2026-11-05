@@ -17,7 +17,7 @@ export type PokemonRow = {
   height: number;
   weight: number;
   base_experience: number | null;
-  sprite_url: string | null;
+  sprite: string | null;
 };
 
 export type TypeRow = {
@@ -61,7 +61,7 @@ export const POKEMON_COLUMNS = [
   'height',
   'weight',
   'base_experience',
-  'sprite_url',
+  'sprite',
 ] as const;
 
 export const TYPE_COLUMNS = ['id', 'name'] as const;
@@ -90,7 +90,7 @@ function toPokemonRow(p: ApiPokemon): PokemonRow {
     height: p.height,
     weight: p.weight,
     base_experience: p.base_experience,
-    sprite_url: p.sprites.front_default,
+    sprite: p.sprites.front_default,
   };
 }
 
