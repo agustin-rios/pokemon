@@ -35,12 +35,15 @@ La primera vez en una máquina, para el e2e: `pnpm exec playwright install --wit
 
 `docker-compose.yml` (proyecto `pokemon`) levanta hoy PostgreSQL, las migraciones y Apache Airflow con la imagen oficial; el backend y el frontend se suman ahí mismo.
 
+Puertos, usuarios y claves salen del `.env` de la raíz (plantilla: `.env.example`); si falta una variable, compose no arranca. Con los valores de la plantilla:
+
 | Servicio      | Dónde                          | Credenciales            |
 | ------------- | ------------------------------ | ----------------------- |
 | PostgreSQL 18 | `localhost:5434`, db `pokemon` | `postgres` / `postgres` |
 | Airflow 3.3.2 | http://localhost:8080          | `airflow` / `airflow`   |
 
 ```sh
+cp .env.example .env      # la primera vez
 docker compose up -d      # la primera vez descarga ~2.6 GB de imágenes; Airflow tarda ~1 min en quedar listo
 docker compose down       # detiene; los datos quedan en el volumen
 docker compose down -v    # detiene y borra los datos
@@ -52,8 +55,8 @@ docker compose down -v    # detiene y borra los datos
 - Las vistas de las consultas se definen en `db/main/sql/views.sql` (montado en Airflow en solo lectura): el DAG las crea con ese archivo y la API las lee. Un test de contrato en `context/pokedex` verifica que ambos lados calcen.
 - Airflow corre en modo `standalone`: UI/API, scheduler, dag-processor y triggerer en un contenedor, con LocalExecutor. Es el modo de Airflow para desarrollo local; si un componente se cae, el contenedor sigue arriba y queda `unhealthy` (`docker compose restart airflow`).
 - Los DAGs van en `platform/airflow/dags/`. Un archivo nuevo tarda hasta 5 min en aparecer (los existentes se re-leen cada 30 s); para no esperar: `docker compose exec airflow airflow dags reserialize`.
-- Puertos configurables con `POSTGRES_PORT` y `AIRFLOW_PORT` (en un `.env` en la raíz).
-- El `DATABASE_URL` de `db/main/.env.example` apunta a este Postgres.
+- Usuarios, claves y bases de Postgres (también los de Airflow) se crean junto con el volumen: para cambiarlos después, `docker compose down -v`.
+- El `DATABASE_URL` de `db/main/.env.example` y de `apps/api/.env.example` apunta a este Postgres, y `AIRFLOW_*` de `apps/api/.env.example` a este Airflow: si cambias el `.env` de la raíz, actualízalos también.
 
 ## API
 
