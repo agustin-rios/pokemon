@@ -1,5 +1,5 @@
 # Imagen de una sola ejecución que aplica las migraciones de Prisma (tablas y
-# constraints). La usa el servicio `migrate` de docker-compose.yml.
+# constraints). La usa el servicio `migrate` de docker-compose.base.yml.
 # Contexto de build: la raíz del repo (usa su .dockerignore).
 FROM node:24-bookworm-slim
 
