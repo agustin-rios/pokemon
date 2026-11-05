@@ -33,9 +33,12 @@ La primera vez en una máquina, para el e2e: `pnpm exec playwright install --wit
 
 ## Servicios (Docker)
 
-`docker-compose.yml` (proyecto `pokemon`) levanta hoy PostgreSQL, las migraciones y Apache Airflow con la imagen oficial; el backend y el frontend se suman ahí mismo.
+Dos archivos de compose, con el mismo `.env` de la raíz (plantilla: `.env.example`; si falta una variable, compose no arranca):
 
-Puertos, usuarios y claves salen del `.env` de la raíz (plantilla: `.env.example`); si falta una variable, compose no arranca. Con los valores de la plantilla:
+- `docker-compose.yml` (proyecto `pokemon`), **desarrollo**: PostgreSQL, las migraciones y Apache Airflow con la imagen oficial. La API y la web corren fuera de Docker con `pnpm dev`.
+- `docker-compose.prod.yml` (proyecto `pokemon-prod`), **producción**: incluye el anterior y suma la API y la web (ver [Producción](#producción-docker)).
+
+Con los valores de la plantilla:
 
 | Servicio      | Dónde                          | Credenciales            |
 | ------------- | ------------------------------ | ----------------------- |
@@ -57,6 +60,18 @@ docker compose down -v    # detiene y borra los datos
 - Los DAGs van en `platform/airflow/dags/`. Un archivo nuevo tarda hasta 5 min en aparecer (los existentes se re-leen cada 30 s); para no esperar: `docker compose exec airflow airflow dags reserialize`.
 - Usuarios, claves y bases de Postgres (también los de Airflow) se crean junto con el volumen: para cambiarlos después, `docker compose down -v`.
 - El `DATABASE_URL` de `db/main/.env.example` y de `apps/api/.env.example` apunta a este Postgres, y `AIRFLOW_*` de `apps/api/.env.example` a este Airflow: si cambias el `.env` de la raíz, actualízalos también.
+
+### Producción (Docker)
+
+```sh
+docker compose -f docker-compose.prod.yml up -d --build   # web en http://localhost:8000 (WEB_PORT)
+docker compose -f docker-compose.prod.yml down            # -v para borrar sus datos
+```
+
+- Levanta lo mismo que desarrollo más `api` (`apps/api/Dockerfile`) y `web` (`apps/pokemon/Dockerfile`: la SPA servida con nginx, que reenvía `/api` a la API; mismo origen, sin CORS). La API no publica puerto: se llega por `http://localhost:8000/api`.
+- Proyecto aparte (`pokemon-prod`): su propio volumen, así que la base parte vacía (hay que correr el DAG). Publica los mismos puertos que desarrollo, así que no se levantan los dos a la vez.
+- Variables propias en el `.env`: `WEB_PORT` y `API_CORS_ALLOW_ORIGINS` (la API en producción no acepta `*`). La API usa además `POSTGRES_*` y `AIRFLOW_ADMIN_*`.
+- La imagen de la API conserva la estructura del workspace: Node ejecuta `context/` y `db/main` como TypeScript y no quita tipos dentro de `node_modules`.
 
 ## API
 

@@ -1,4 +1,6 @@
-# Servicios del proyecto. Hoy: PostgreSQL, migraciones y Apache Airflow (imagen oficial).
+# Desarrollo: PostgreSQL, migraciones y Apache Airflow (imagen oficial). La API y
+# la web corren fuera de Docker con `pnpm dev`. Producción: docker-compose.prod.yml
+# (incluye este archivo y suma la API y la web).
 #   cp .env.example .env   (la primera vez: puertos, usuarios y claves)
 #   docker compose up -d
 # Todos los valores vienen de .env; si falta uno, compose no arranca (${VAR:?}).
