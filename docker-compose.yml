@@ -66,6 +66,8 @@ services:
       - ./platform/airflow/dags:/opt/airflow/dags
       # Los 6 CSV (pnpm ops data prepare). Solo lectura: el DAG nunca los modifica.
       - ./data:/opt/airflow/data:ro
+      # Definición de las vistas (fuente única, la lee también el context). La ejecuta build_views.
+      - ./db/main/sql:/opt/airflow/sql:ro
     depends_on:
       postgres:
         condition: service_healthy
