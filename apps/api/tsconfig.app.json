@@ -15,5 +15,13 @@
     "types": ["node"]
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["out-tsc", "dist"]
+  "exclude": ["out-tsc", "dist"],
+  "references": [
+    {
+      "path": "../../db/main/tsconfig.lib.json"
+    },
+    {
+      "path": "../../context/pokedex/tsconfig.lib.json"
+    }
+  ]
 }

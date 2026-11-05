@@ -1,18 +1,16 @@
-import { Logger, StandardSchemaValidationPipe } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.ts';
+import { setupApp } from './app.setup.ts';
 import type { Env } from './config/index.ts';
 
 const logger = new Logger('Bootstrap');
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = setupApp(await NestFactory.create(AppModule));
   const config = app.get<ConfigService<Env, true>>(ConfigService);
 
-  app.setGlobalPrefix('api');
-  // Valida contra el schema (Zod) declarado en @Query/@Body/@Param({ schema }).
-  app.useGlobalPipes(new StandardSchemaValidationPipe());
   app.enableCors({ origin: config.get('CORS_ALLOW_ORIGINS', { infer: true }) });
   app.enableShutdownHooks();
 

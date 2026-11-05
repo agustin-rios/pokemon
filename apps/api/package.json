@@ -22,10 +22,19 @@
         ],
         "outputs": [
           "{projectRoot}/dist"
+        ],
+        "dependsOn": [
+          "^build",
+          "^generate",
+          "typecheck"
         ]
       },
       "dev": {
-        "continuous": true
+        "continuous": true,
+        "dependsOn": [
+          "^generate",
+          "^typecheck"
+        ]
       },
       "start": {
         "continuous": true,
@@ -40,6 +49,8 @@
     "@nestjs/config": "^12.1.0",
     "@nestjs/core": "^12.3.3",
     "@nestjs/platform-express": "^12.3.3",
+    "@pokemon/context-pokedex": "workspace:*",
+    "@pokemon/db-main": "workspace:*",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "tslib": "^2.9.1",

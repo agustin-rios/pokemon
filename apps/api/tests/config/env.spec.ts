@@ -5,6 +5,7 @@ describe('envSchema', () => {
     expect(envSchema.parse({})).toEqual({
       NODE_ENV: 'development',
       PORT: 3000,
+      DATABASE_URL: 'postgresql://postgres:postgres@localhost:5434/pokemon',
       CORS_ALLOW_ORIGINS: true,
     });
   });

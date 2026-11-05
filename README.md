@@ -49,10 +49,26 @@ docker compose down -v    # detiene y borra los datos
 - Un solo Postgres con dos bases: `pokemon` (la app) y `airflow` (estado interno de Airflow, creada al iniciar el volumen).
 - Orden de arranque: Postgres sano → `migrate` aplica las migraciones de Prisma (`db/main`: tablas y constraints) y termina → Airflow. El DAG no crea tablas: solo carga datos y crea las vistas.
 - Airflow lee los CSV de `data/` (montada en solo lectura; se generan con `pnpm ops data prepare`) y escribe en la base `pokemon` con la conexión `pokemon_db`.
+- Las vistas de las consultas se definen en `db/main/sql/views.sql` (montado en Airflow en solo lectura): el DAG las crea con ese archivo y la API las lee. Un test de contrato en `context/pokedex` verifica que ambos lados calcen.
 - Airflow corre en modo `standalone`: UI/API, scheduler, dag-processor y triggerer en un contenedor, con LocalExecutor. Es el modo de Airflow para desarrollo local; si un componente se cae, el contenedor sigue arriba y queda `unhealthy` (`docker compose restart airflow`).
 - Los DAGs van en `platform/airflow/dags/`. Un archivo nuevo tarda hasta 5 min en aparecer (los existentes se re-leen cada 30 s); para no esperar: `docker compose exec airflow airflow dags reserialize`.
 - Puertos configurables con `POSTGRES_PORT` y `AIRFLOW_PORT` (en un `.env` en la raíz).
 - El `DATABASE_URL` de `db/main/.env.example` apunta a este Postgres.
+
+## API
+
+`apps/api`, prefijo `/api` (en dev, `http://localhost:3000/api`). Lee la base `pokemon` (`DATABASE_URL`).
+
+| Endpoint                            | Devuelve                                                                   |
+| ----------------------------------- | -------------------------------------------------------------------------- |
+| `GET /items?page=&pageSize=`        | Pokémon con sus tipos, paginado (`page` ≥ 1, `pageSize` 1–100, default 20) |
+| `GET /items/:id`                    | Un Pokémon con sus tipos                                                   |
+| `GET /items/summary`                | Por tipo: cantidad de Pokémon y experiencia base promedio                  |
+| `GET /reports/monthly-growth`       | Consulta A: capturas por mes y % de cambio vs. el mes anterior             |
+| `GET /reports/top-trainers`         | Consulta B: top 3 entrenadores por capturas en cada región                 |
+| `GET /reports/level-classification` | Consulta C: por tipo, capturas con nivel ≥ 50 y su porcentaje              |
+
+Errores: entrada inválida → 400, id inexistente → 404, datos aún no disponibles (la vista no existe) → 503. Las agregaciones (summary y A, B, C) corren en Postgres: cada endpoint lee una vista definida en `db/main/sql/views.sql` (contrato en [context/pokedex](context/pokedex/README.md)).
 
 ## Estructura de datos
 

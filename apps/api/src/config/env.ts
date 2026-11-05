@@ -6,6 +6,11 @@ export const envSchema = z
       .enum(['development', 'production', 'test'])
       .default('development'),
     PORT: z.coerce.number().int().positive().default(3000),
+    // Base de datos de la app. Default: el Postgres de docker compose en dev.
+    DATABASE_URL: z
+      .string()
+      .min(1)
+      .default('postgresql://postgres:postgres@localhost:5434/pokemon'),
     // "*" → true: CORS refleja el origen de cada request.
     CORS_ALLOW_ORIGINS: z
       .string()
