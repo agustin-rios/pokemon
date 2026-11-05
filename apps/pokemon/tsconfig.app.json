@@ -10,5 +10,10 @@
     "tsBuildInfoFile": "dist/tsconfig.app.tsbuildinfo"
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
-  "exclude": ["out-tsc", "dist"]
+  "exclude": ["out-tsc", "dist"],
+  "references": [
+    {
+      "path": "../../context/pokedex/tsconfig.lib.json"
+    }
+  ]
 }

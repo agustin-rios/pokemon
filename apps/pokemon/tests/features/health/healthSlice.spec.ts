@@ -3,50 +3,28 @@ import {
   fetchHealth,
   selectHealthStatus,
 } from '../../../src/features/health/healthSlice.ts';
+import { fakeApi } from '../../support/fakeApi.ts';
 
 describe('health', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
   it('parte en idle', () => {
-    expect(selectHealthStatus(makeStore().getState())).toBe('idle');
+    const store = makeStore({ api: fakeApi() });
+    expect(selectHealthStatus(store.getState())).toBe('idle');
   });
 
   it('queda en ok cuando la API responde', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(Response.json({ status: 'ok' }));
-    vi.stubGlobal('fetch', fetchMock);
-    const store = makeStore();
+    const api = fakeApi();
+    const store = makeStore({ api });
 
     await store.dispatch(fetchHealth());
 
     expect(selectHealthStatus(store.getState())).toBe('ok');
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/health',
-      expect.objectContaining({ signal: expect.any(AbortSignal) }),
-    );
+    expect(api.health).toHaveBeenCalledWith(expect.any(AbortSignal));
   });
 
-  it('queda en error si la API responde con un error HTTP', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(new Response(null, { status: 503 })),
-    );
-    const store = makeStore();
-
-    await store.dispatch(fetchHealth());
-
-    expect(selectHealthStatus(store.getState())).toBe('error');
-  });
-
-  it('queda en error si no hay conexión', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockRejectedValue(new TypeError('Failed to fetch')),
-    );
-    const store = makeStore();
+  it('queda en error si la API falla', async () => {
+    const api = fakeApi();
+    api.health.mockRejectedValue(new TypeError('Failed to fetch'));
+    const store = makeStore({ api });
 
     await store.dispatch(fetchHealth());
 
@@ -54,11 +32,9 @@ describe('health', () => {
   });
 
   it('una petición cancelada no cuenta como error', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(() => new Promise<Response>(() => undefined)),
-    );
-    const store = makeStore();
+    const api = fakeApi();
+    api.health.mockReturnValue(new Promise(() => undefined));
+    const store = makeStore({ api });
 
     const request = store.dispatch(fetchHealth());
     request.abort();

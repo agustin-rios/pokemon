@@ -4,10 +4,11 @@ import { Provider } from 'react-redux';
 import { createBrowserRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { CssBaseline, ThemeProvider, createTheme } from '@mui/material';
+import { httpPokedexApi } from './api/pokedexApi.ts';
 import { makeStore } from './app/store.ts';
 import { routes } from './routes.tsx';
 
-const store = makeStore();
+const store = makeStore({ api: httpPokedexApi });
 const router = createBrowserRouter(routes);
 const theme = createTheme();
 

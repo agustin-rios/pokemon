@@ -1,4 +1,5 @@
-import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
+import { createSlice } from '@reduxjs/toolkit';
+import { createAppAsyncThunk } from '../../app/createAppAsyncThunk.ts';
 
 export type HealthStatus = 'idle' | 'loading' | 'ok' | 'error';
 
@@ -8,13 +9,9 @@ export interface HealthState {
 
 const initialState: HealthState = { status: 'idle' };
 
-export const fetchHealth = createAsyncThunk(
+export const fetchHealth = createAppAsyncThunk(
   'health/fetch',
-  async (_: void, { signal }) => {
-    const res = await fetch('/api/health', { signal });
-    if (!res.ok) throw new Error(`GET /api/health → ${res.status}`);
-    return (await res.json()) as { status: 'ok' };
-  },
+  (_: void, { extra, signal }) => extra.api.health(signal),
 );
 
 export const healthSlice = createSlice({

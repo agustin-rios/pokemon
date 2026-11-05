@@ -1,59 +1,41 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { Provider } from 'react-redux';
-import { RouterProvider, createMemoryRouter } from 'react-router';
-import { makeStore } from '../src/app/store.ts';
-import { routes } from '../src/routes.tsx';
-
-function renderAt(path: string) {
-  const router = createMemoryRouter(routes, { initialEntries: [path] });
-  render(
-    <Provider store={makeStore()}>
-      <RouterProvider router={router} />
-    </Provider>,
-  );
-}
+import { fireEvent, screen } from '@testing-library/react';
+import { fakeApi } from './support/fakeApi.ts';
+import { renderApp } from './support/renderApp.tsx';
 
 describe('rutas', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it('el inicio muestra el estado de la API', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(Response.json({ status: 'ok' })),
-    );
-
-    renderAt('/');
+  it('/ redirige a /items', async () => {
+    const { router } = renderApp('/');
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Pokemon' }),
+      await screen.findByRole('heading', { level: 1, name: 'Pokédex' }),
     ).toBeTruthy();
-    expect(await screen.findByText('API: conectada')).toBeTruthy();
+    expect(router.state.location.pathname).toBe('/items');
   });
 
-  it('avisa si la API no responde', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockRejectedValue(new TypeError('Failed to fetch')),
-    );
+  it('la navegación lleva a los reportes', async () => {
+    const { router } = renderApp('/items');
 
-    renderAt('/');
+    fireEvent.click(await screen.findByRole('link', { name: 'Reportes' }));
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Reportes' }),
+    ).toBeTruthy();
+    expect(router.state.location.pathname).toBe('/reports/monthly-growth');
+  });
+
+  it('una ruta desconocida muestra "no encontrada"', async () => {
+    renderApp('/nope');
+
+    expect(
+      await screen.findByRole('heading', { name: 'Página no encontrada' }),
+    ).toBeTruthy();
+  });
+
+  it('muestra el estado de la API', async () => {
+    const api = fakeApi();
+    api.health.mockRejectedValue(new TypeError('Failed to fetch'));
+    renderApp('/items', api);
 
     expect(await screen.findByText('API: sin conexión')).toBeTruthy();
-  });
-
-  it('navega a Acerca de', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(Response.json({ status: 'ok' })),
-    );
-    renderAt('/');
-
-    fireEvent.click(await screen.findByRole('link', { name: 'Acerca de' }));
-
-    expect(
-      await screen.findByRole('heading', { level: 1, name: 'Acerca de' }),
-    ).toBeTruthy();
   });
 });
