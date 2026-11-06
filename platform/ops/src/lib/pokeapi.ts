@@ -66,11 +66,7 @@ export const POKEMON_COLUMNS = [
 
 export const TYPE_COLUMNS = ['id', 'name'] as const;
 
-export const POKEMON_TYPE_COLUMNS = [
-  'pokemon_id',
-  'type_id',
-  'slot',
-] as const;
+export const POKEMON_TYPE_COLUMNS = ['pokemon_id', 'type_id', 'slot'] as const;
 
 export function typeIdFromUrl(url: string): number {
   const pathname = new URL(url).pathname;
@@ -94,9 +90,7 @@ function toPokemonRow(p: ApiPokemon): PokemonRow {
   };
 }
 
-export function toDataset(
-  apiPokemon: readonly ApiPokemon[],
-): Dataset {
+export function toDataset(apiPokemon: readonly ApiPokemon[]): Dataset {
   const pokemon = new Map<number, PokemonRow>();
   const types = new Map<number, TypeRow>();
   const pokemonTypes: PokemonTypeRow[] = [];
@@ -126,17 +120,12 @@ export function toDataset(
     types: [...types.values()].sort((a, b) => a.id - b.id),
 
     pokemonTypes: pokemonTypes.sort(
-      (a, b) =>
-        a.pokemon_id - b.pokemon_id ||
-        a.slot - b.slot,
+      (a, b) => a.pokemon_id - b.pokemon_id || a.slot - b.slot,
     ),
   };
 }
 
-function getRetryDelay(
-  attempt: number,
-  response?: Response,
-): number {
+function getRetryDelay(attempt: number, response?: Response): number {
   const retryAfter = response?.headers.get('Retry-After');
 
   if (retryAfter) {
@@ -159,33 +148,25 @@ function getRetryDelay(
 /**
  * GET JSON con timeout y reintentos para errores recuperables.
  */
-async function getJson<T>(
-  url: string,
-  signal?: AbortSignal,
-): Promise<T> {
+async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> {
   let lastError: unknown;
+  // Espera antes del próximo intento: se calcula al fallar (con el Retry-After
+  // de esa respuesta, si vino) y se cumple una sola vez, al empezar el intento.
+  let retryDelayMs = 0;
 
-  for (
-    let attempt = 0;
-    attempt < HTTP_CONFIG.maxAttempts;
-    attempt++
-  ) {
+  for (let attempt = 0; attempt < HTTP_CONFIG.maxAttempts; attempt++) {
     if (signal?.aborted) {
       throw signal.reason;
     }
 
     if (attempt > 0) {
-      await sleep(getRetryDelay(attempt - 1), undefined, {
-        signal,
-      });
+      await sleep(retryDelayMs, undefined, { signal });
     }
 
     let response: Response;
 
     try {
-      const timeoutSignal = AbortSignal.timeout(
-        HTTP_CONFIG.timeoutMs,
-      );
+      const timeoutSignal = AbortSignal.timeout(HTTP_CONFIG.timeoutMs);
 
       const requestSignal = signal
         ? AbortSignal.any([signal, timeoutSignal])
@@ -198,11 +179,7 @@ async function getJson<T>(
       if (signal?.aborted) throw signal.reason;
 
       lastError = error;
-
-      if (attempt === HTTP_CONFIG.maxAttempts - 1) {
-        break;
-      }
-
+      retryDelayMs = getRetryDelay(attempt);
       continue;
     }
 
@@ -211,26 +188,16 @@ async function getJson<T>(
     }
 
     if (response.status !== 429 && response.status < 500) {
-      throw new Error(
-        `GET ${url} respondió HTTP ${response.status}`,
-      );
+      throw new Error(`GET ${url} respondió HTTP ${response.status}`);
     }
 
     lastError = new Error(`HTTP ${response.status}`);
-
-    if (attempt < HTTP_CONFIG.maxAttempts - 1) {
-      await sleep(
-        getRetryDelay(attempt, response),
-        undefined,
-        { signal },
-      );
-    }
+    retryDelayMs = getRetryDelay(attempt, response);
   }
 
-  throw new Error(
-    `GET ${url} falló tras ${HTTP_CONFIG.maxAttempts} intentos`,
-    { cause: lastError },
-  );
+  throw new Error(`GET ${url} falló tras ${HTTP_CONFIG.maxAttempts} intentos`, {
+    cause: lastError,
+  });
 }
 
 export async function fetchPokemon(
@@ -238,15 +205,11 @@ export async function fetchPokemon(
   concurrency = HTTP_CONFIG.defaultConcurrency,
 ): Promise<ApiPokemon[]> {
   if (!Number.isInteger(limit) || limit < 0 || limit > MAX_POKEMON) {
-    throw new RangeError(
-      `limit debe estar entre 0 y ${MAX_POKEMON}`,
-    );
+    throw new RangeError(`limit debe estar entre 0 y ${MAX_POKEMON}`);
   }
 
   if (!Number.isInteger(concurrency) || concurrency < 1) {
-    throw new RangeError(
-      'concurrency debe ser un entero positivo',
-    );
+    throw new RangeError('concurrency debe ser un entero positivo');
   }
 
   if (limit === 0) return [];
@@ -276,9 +239,7 @@ export async function fetchPokemon(
 
   const workerCount = Math.min(concurrency, limit);
 
-  await Promise.all(
-    Array.from({ length: workerCount }, () => worker()),
-  );
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
 
   return results;
 }
