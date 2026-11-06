@@ -90,12 +90,12 @@ Errores: entrada inválida → 400, id inexistente → 404, datos aún no dispon
 
 ## Estructura de datos
 
-| Carpeta                  | Para qué                                                                                   |
-| ------------------------ | ------------------------------------------------------------------------------------------ |
-| `data/`                  | CSV de entrada que lee Airflow (no se versiona)                                            |
-| `scripts/`               | Scripts que producen esos CSV                                                              |
-| `platform/airflow/dags/` | DAGs de Airflow                                                                            |
-| `platform/ops/`          | CLI `pnpm ops`: comandos en `src/commands/` (registrados en `index.ts`), tests en `tests/` |
+| Carpeta             | Para qué                                                                                   |
+| ------------------- | ------------------------------------------------------------------------------------------ |
+| `data/`             | CSV de entrada que lee Airflow (no se versiona)                                            |
+| `scripts/`          | Scripts que producen esos CSV                                                              |
+| `platform/airflow/` | DAG `pokemon_etl` y su validación (`dags/`), tests en `tests/`                             |
+| `platform/ops/`     | CLI `pnpm ops`: comandos en `src/commands/` (registrados en `index.ts`), tests en `tests/` |
 
 ```sh
 pnpm ops data scrape      # PokeAPI → data/pokemon.csv, types.csv, pokemon_types.csv (Pokémon 1–100; --limit para otro n)
@@ -103,6 +103,52 @@ pnpm ops data generate    # scripts/generate_pokemon_data.py con los ids de data
 pnpm ops data prepare     # los dos anteriores en cadena: los 6 CSV juntos (data/ cambia solo si ambos terminan)
 pnpm ops help
 ```
+
+## Carga de datos (Airflow)
+
+El DAG `pokemon_etl` es la única vía por la que entran datos a la base: no hay seeds ni dumps. Para que la app muestre datos:
+
+```sh
+pnpm ops data prepare          # 1. genera los 6 CSV en data/ (Airflow la monta en solo lectura)
+docker compose up -d --build   # 2. Postgres, migraciones (crean las tablas), Airflow, API y web
+```
+
+Para desarrollar, en vez del paso 2: `docker compose -f docker-compose.base.yml up -d` y `pnpm dev` (web en `:4200`, API en `:3000`).
+
+3. Disparar el DAG (no tiene schedule), de cualquiera de estas formas:
+   - **Web** (http://localhost:8000): con la base vacía, cada sección muestra «Cargar datos»; a los pocos segundos, «Reintentar».
+   - **API**: `curl -X POST http://localhost:8000/api/etl/runs` (con `pnpm dev`, `http://localhost:3000/api/etl/runs`).
+   - **Airflow**: http://localhost:8080 → `pokemon_etl` → Trigger, o `docker compose exec airflow airflow dags trigger pokemon_etl`.
+
+Tareas, en orden (tarda unos segundos):
+
+1. `validate` lee los 6 CSV y los valida (`platform/airflow/dags/pokemon_csv.py`). La corrida falla, sin escribir nada, si falta un archivo, una columna o filas; si un valor está vacío o no se puede leer; si se repite un id o una clave única; si una referencia apunta a un id que no existe (`pokemon_id` y `trainer_id` de `captures.csv`, y las demás FK); o si una fila de `types`, `pokemon`, `pokemon_types` o `trainers` rompe una regla de la base. En `captures` y `battles`, que ninguna tabla referencia, una fila que rompe una regla se descarta y queda en el log (el generador produce algunas batallas con duración negativa). Un `base_experience` vacío (la PokeAPI lo trae `null` en algunos Pokémon) se carga como 0, el default de la columna. La columna `sprite` del CSV se carga en `sprite_url`.
+2. `load` vacía las 6 tablas y las carga en orden de FK (`types`, `pokemon`, `pokemon_types`, `trainers`, `captures`, `battles`) en una sola transacción. Es idempotente: otra corrida deja exactamente los mismos datos, y si algo falla la base queda como estaba.
+3. `build_views` crea o actualiza las vistas de las consultas con `db/main/sql/views.sql`.
+
+Tests de la validación (Python 3.10+ con pytest; no necesitan Airflow): `python3 -m pytest platform/airflow`.
+
+## Esquema de la base
+
+Tablas y constraints en las migraciones de Prisma (`db/main/prisma`); vistas en `db/main/sql/views.sql` (contrato en [context/pokedex](context/pokedex/README.md)).
+
+```mermaid
+erDiagram
+  types ||--o{ pokemon_types : "type_id"
+  pokemon ||--|{ pokemon_types : "pokemon_id"
+  trainers ||--o{ captures : "trainer_id"
+  pokemon ||--o{ captures : "pokemon_id"
+  pokemon ||--o{ battles : "pokemon_a_id, pokemon_b_id, winner_id"
+```
+
+| Tabla           | Columnas                                                                                             | Clave primaria            | Claves foráneas y reglas                                                              |
+| --------------- | ---------------------------------------------------------------------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------- |
+| `types`         | `id`, `name`                                                                                         | `id`                      | `name` único y no vacío                                                               |
+| `pokemon`       | `id` (n° de Pokédex), `name`, `height`, `weight`, `base_experience` (default 0), `sprite_url` (null) | `id`                      | `name` único y no vacío; `height` y `weight` > 0; `base_experience` ≥ 0               |
+| `pokemon_types` | `pokemon_id`, `type_id`, `slot`                                                                      | (`pokemon_id`, `type_id`) | → `pokemon`, → `types`; (`pokemon_id`, `slot`) único; `slot` 1 o 2, y el 2 exige el 1 |
+| `trainers`      | `id`, `name`, `region`, `created_at` (fecha)                                                         | `id`                      | `name` y `region` no vacíos                                                           |
+| `captures`      | `id`, `trainer_id`, `pokemon_id`, `captured_at` (timestamp), `level`, `location`                     | `id`                      | → `trainers`, → `pokemon`; `level` entre 1 y 100; `location` no vacía                 |
+| `battles`       | `id`, `pokemon_a_id`, `pokemon_b_id`, `winner_id`, `fought_at` (timestamp), `duration_seconds`       | `id`                      | las tres → `pokemon`; A ≠ B; el ganador es A o B; `duration_seconds` ≥ 0              |
 
 ## Arquitectura
 
