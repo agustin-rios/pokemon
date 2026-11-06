@@ -1,0 +1,3 @@
+# Alternativas del proyecto: cada una es un monorepo completo e independiente
+# (su propio Nx, pnpm y compose). El Nx de la raíz no las incluye.
+alternatives/

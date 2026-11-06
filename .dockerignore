@@ -2,6 +2,7 @@
 # manifiestos. Las dependencias y los builds se generan dentro de la imagen.
 
 # Repo, editores y herramientas
+alternatives
 .git
 .github
 .vscode
