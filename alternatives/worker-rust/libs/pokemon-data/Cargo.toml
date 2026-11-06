@@ -1,0 +1,24 @@
+[package]
+name = "pokemon-data"
+description = "Cliente de PokeAPI y generador sintético compatible con Python. Puro: sin base de datos ni cola."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+chrono.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+axum.workspace = true
+sha2.workspace = true
+
+[lints]
+workspace = true

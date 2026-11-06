@@ -1,0 +1,29 @@
+[package]
+name = "pokemon-context-ingestion"
+description = "Contexto ingestion: pipeline de datos con tablas staging (scrape, generate, validate, load, build_views), cola de corridas y worker."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+async-trait.workspace = true
+chrono.workspace = true
+pokemon-data = { path = "../../libs/pokemon-data" }
+pokemon-db = { path = "../../db/main" }
+serde.workspace = true
+serde_json.workspace = true
+sqlx.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+ts-rs.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+axum.workspace = true
+tokio = { workspace = true, features = ["test-util"] }
+
+[lints]
+workspace = true

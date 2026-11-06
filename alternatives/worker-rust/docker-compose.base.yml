@@ -1,0 +1,43 @@
+# Base: PostgreSQL y migraciones. docker-compose.yml la incluye y suma la API, el
+# worker y la web. Sola sirve para desarrollar con `pnpm dev` (API, worker y web
+# fuera de Docker):
+#   cp .env.example .env   (la primera vez: puertos, usuario y clave)
+#   docker compose -f docker-compose.base.yml up -d
+# Mismo proyecto (`pokemon-worker-rust`) que docker-compose.yml: comparten contenedores y volumen.
+# Todos los valores vienen de .env; si falta uno, compose no arranca (${VAR:?}).
+# Orden: postgres sano → migrate crea tablas, constraints y las tablas etl_*.
+name: pokemon-worker-rust
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_DB: ${POSTGRES_DB:?}
+    ports:
+      - '${POSTGRES_PORT:?}:5432'
+    volumes:
+      # Desde Postgres 18 el volumen va en /var/lib/postgresql (no en .../data).
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test:
+        ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:?} -d ${POSTGRES_DB:?}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  migrate:
+    # Aplica las migraciones de sqlx (db/main/migrations) y termina. Idempotente.
+    build:
+      context: .
+      target: migrate
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:?}:${POSTGRES_PASSWORD:?}@postgres:5432/${POSTGRES_DB:?}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres-data:

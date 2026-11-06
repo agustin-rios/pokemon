@@ -1,0 +1,20 @@
+[package]
+name = "pokemon-db"
+description = "Esquema, migraciones (sqlx) y vistas SQL de la base principal."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+sqlx.workspace = true
+tokio.workspace = true
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "migrate"
+path = "src/bin/migrate.rs"

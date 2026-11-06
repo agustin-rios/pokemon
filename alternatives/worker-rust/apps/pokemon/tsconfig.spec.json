@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./out-tsc/vitest",
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "types": [
+      "vitest/globals",
+      "vitest/importMeta",
+      "vite/client",
+      "node",
+      "vitest"
+    ],
+    "jsx": "react-jsx"
+  },
+  "include": ["vite.config.mts", "tests/**/*.ts", "tests/**/*.tsx"],
+  "references": [
+    {
+      "path": "./tsconfig.app.json"
+    }
+  ]
+}

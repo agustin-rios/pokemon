@@ -1,0 +1,32 @@
+[package]
+name = "pokemon-worker"
+description = "Worker: toma corridas de la cola y ejecuta el pipeline scrape, generate, validate, load y build_views."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "pokemon-worker"
+path = "src/main.rs"
+
+[dependencies]
+anyhow.workspace = true
+async-trait.workspace = true
+dotenvy.workspace = true
+pokemon-context-ingestion = { path = "../../context/ingestion" }
+pokemon-data = { path = "../../libs/pokemon-data" }
+pokemon-db = { path = "../../db/main" }
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+sqlx.workspace = true
+tracing-subscriber.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
+
+[lints]
+workspace = true

@@ -1,0 +1,34 @@
+{
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "name": "pokemon-db",
+  "projectType": "library",
+  "sourceRoot": "db/main/src",
+  "tags": ["type:db", "scope:pokemon"],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "cargo build -p pokemon-db"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "cargo test -p pokemon-db"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "commands": [
+          "cargo clippy -p pokemon-db --all-targets -- -D warnings",
+          "cargo fmt -p pokemon-db -- --check"
+        ],
+        "parallel": false
+      }
+    }
+  }
+}

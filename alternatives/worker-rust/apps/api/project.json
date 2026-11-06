@@ -1,0 +1,42 @@
+{
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "name": "pokemon-api",
+  "projectType": "application",
+  "sourceRoot": "apps/api/src",
+  "tags": ["type:app", "scope:pokemon"],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "cargo build -p pokemon-api"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "cargo test -p pokemon-api"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "commands": [
+          "cargo clippy -p pokemon-api --all-targets -- -D warnings",
+          "cargo fmt -p pokemon-api -- --check"
+        ],
+        "parallel": false
+      }
+    },
+    "dev": {
+      "executor": "nx:run-commands",
+      "continuous": true,
+      "cache": false,
+      "options": {
+        "command": "cargo run -p pokemon-api --bin pokemon-api"
+      }
+    }
+  }
+}

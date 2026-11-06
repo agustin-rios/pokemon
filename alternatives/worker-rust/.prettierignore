@@ -1,0 +1,8 @@
+# Prettier ya excluye lo que ignora .gitignore; aquí solo va lo versionado que no se formatea.
+pnpm-lock.yaml
+
+# Tipos generados desde Rust (ts-rs): `pnpm gen:types`
+apps/pokemon/src/api/generated
+
+# Fixtures de las pruebas de Rust (salida de referencia de Python)
+libs/pokemon-data/tests/fixtures

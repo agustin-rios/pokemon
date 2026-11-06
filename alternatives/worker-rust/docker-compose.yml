@@ -1,0 +1,65 @@
+# Todo el proyecto: lo de docker-compose.base.yml (Postgres y migraciones) más la API,
+# el worker y la web en contenedores. La web (nginx) sirve la SPA y reenvía /api a la API.
+#   cp .env.example .env   (la primera vez)
+#   docker compose up -d --build
+#   docker compose down
+# Los valores vienen de .env (aquí también WEB_PORT y API_CORS_ALLOW_ORIGINS).
+name: pokemon-worker-rust
+
+include:
+  - docker-compose.base.yml
+
+# Base de la app dentro de la red de compose (la usan la API y el worker).
+x-pokemon-db-url: &pokemon-db-url postgresql://${POSTGRES_USER:?}:${POSTGRES_PASSWORD:?}@postgres:5432/${POSTGRES_DB:?}
+
+services:
+  api:
+    build:
+      context: .
+      target: api
+    # Sin puerto publicado: se llega por la web (/api). APP_ENV=production viene de la imagen.
+    environment:
+      DATABASE_URL: *pokemon-db-url
+      CORS_ALLOW_ORIGINS: ${API_CORS_ALLOW_ORIGINS:?}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ['CMD', '/usr/local/bin/pokemon-api', 'healthcheck']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  worker:
+    # Espera corridas en la cola (etl_runs) y ejecuta scrape → generate → validate → load
+    # → build_views. Los datos entre pasos van a las tablas staging de Postgres.
+    build:
+      context: .
+      target: worker
+    environment:
+      DATABASE_URL: *pokemon-db-url
+    # Al apagar espera hasta 10 s al paso en curso (SHUTDOWN_GRACE) y luego devuelve la
+    # corrida a la cola: docker debe darle más que su plazo por defecto (10 s).
+    stop_grace_period: 20s
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/pokemon/Dockerfile
+    ports:
+      - '${WEB_PORT:?}:80'
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '--spider', 'http://127.0.0.1/']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
