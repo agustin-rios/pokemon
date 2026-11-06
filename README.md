@@ -30,7 +30,7 @@ pnpm ops data prepare          # 2. PokeAPI + generador → los 6 CSV en data/
 docker compose up -d --build   # 3. Postgres, migraciones, Airflow, API y web
 ```
 
-**4.** Abrir **http://localhost:8000** y apretar **«Cargar datos»**: dispara el DAG, que llena la base ([otras formas](#-disparar-el-dag)).
+**4.** Abrir **http://localhost** y apretar **«Cargar datos»**: dispara el DAG, que llena la base ([otras formas](#-disparar-el-dag)).
 
 > [!IMPORTANT]
 > La base parte vacía: el DAG es la única vía por la que entran datos (no hay seeds ni dumps). Hasta que corra, cada sección de la web muestra «Cargar datos».
@@ -42,8 +42,8 @@ Con los valores de `.env.example`:
 
 | Servicio      | Dónde                            | Credenciales            |
 | ------------- | -------------------------------- | ----------------------- |
-| Web           | http://localhost:8000            | —                       |
-| API           | http://localhost:8000/api        | —                       |
+| Web           | http://localhost                 | —                       |
+| API           | http://localhost/api             | —                       |
 | Airflow 3.3.2 | http://localhost:8080            | `airflow` / `airflow`   |
 | PostgreSQL 18 | `localhost:5434`, base `pokemon` | `postgres` / `postgres` |
 
@@ -67,13 +67,14 @@ pnpm dev                                          # web en http://localhost:4200
 | `docker-compose.yml`      | `docker-compose.base.yml` + `api` y `web` en contenedores   | Correr todo: `docker compose up` |
 | `docker-compose.base.yml` | `postgres`, `migrate` (Prisma) y `airflow` (imagen oficial) | Desarrollar con `pnpm dev`       |
 
-Los dos son el mismo proyecto de compose (`pokemon`), así que comparten contenedores y volumen: lo que cargue el DAG se ve en los dos modos. La web en Docker usa el puerto 8000 y `pnpm dev` el 4200 y el 3000, así que pueden estar arriba a la vez.
+Los dos son el mismo proyecto de compose (`pokemon`), así que comparten contenedores y volumen: lo que cargue el DAG se ve en los dos modos. La web en Docker usa el puerto 80 y `pnpm dev` el 4200 y el 3000, así que pueden estar arriba a la vez.
 
 <details>
 <summary><b>Detalles de Docker</b></summary>
 
 - Ambos archivos leen el `.env` de la raíz (plantilla: `.env.example`); si falta una variable, compose no arranca. `WEB_PORT` y `API_CORS_ALLOW_ORIGINS` solo los usa `docker-compose.yml` (la API en producción no acepta `*`).
-- `api` (`apps/api/Dockerfile`) y `web` (`apps/pokemon/Dockerfile`) son imágenes de producción: después de cambiar código, `docker compose up -d --build` las reconstruye. La API no publica puerto: se llega por la web en `/api`.
+- La web se publica en `WEB_PORT=80`, así que la URL no lleva puerto. Si el 80 está ocupado, usa otro (p. ej. `WEB_PORT=8000`) y ponlo también en `API_CORS_ALLOW_ORIGINS` (`http://localhost:8000`).
+- `api` (`apps/api/Dockerfile`) y `web` (`apps/pokemon/Dockerfile`) son imágenes de producción: después de cambiar código, `docker compose up -d --build` las reconstruye. La API no publica puerto: nginx la reenvía desde la web en `/api` (mismo origen, sin CORS), así que es la única puerta de entrada.
 - La imagen de la API conserva la estructura del workspace: Node ejecuta `context/` y `db/main` como TypeScript y no quita tipos dentro de `node_modules`.
 - Airflow corre en modo `standalone`: UI/API, scheduler, dag-processor y triggerer en un contenedor, con LocalExecutor. Es el modo de Airflow para desarrollo local; si un componente se cae, el contenedor sigue arriba y queda `unhealthy` (`docker compose restart airflow`).
 - Usuarios, claves y bases de Postgres (también los de Airflow) se crean junto con el volumen: para cambiarlos después, `docker compose down -v`.
@@ -109,12 +110,12 @@ pnpm ops help
 
 El DAG `pokemon_etl` no tiene schedule: se dispara a mano, de cualquiera de estas formas.
 
-| Desde         | Cómo                                                                                                              |
-| ------------- | ----------------------------------------------------------------------------------------------------------------- |
-| 🖱️ Web        | http://localhost:8000 → **«Cargar datos»** (aparece con la base vacía); a los pocos segundos, «Reintentar»        |
-| 🌐 API        | `curl -X POST http://localhost:8000/api/etl/runs` → `202` con la corrida encolada (con `pnpm dev`, puerto `3000`) |
-| 🌀 Airflow UI | http://localhost:8080 (`airflow` / `airflow`) → `pokemon_etl` → **Trigger**                                       |
-| 💻 CLI        | `docker compose exec airflow airflow dags trigger pokemon_etl`                                                    |
+| Desde         | Cómo                                                                                                         |
+| ------------- | ------------------------------------------------------------------------------------------------------------ |
+| 🖱️ Web        | http://localhost → **«Cargar datos»** (aparece con la base vacía); a los pocos segundos, «Reintentar»        |
+| 🌐 API        | `curl -X POST http://localhost/api/etl/runs` → `202` con la corrida encolada (con `pnpm dev`, puerto `3000`) |
+| 🌀 Airflow UI | http://localhost:8080 (`airflow` / `airflow`) → `pokemon_etl` → **Trigger**                                  |
+| 💻 CLI        | `docker compose exec airflow airflow dags trigger pokemon_etl`                                               |
 
 Tarda unos segundos. Tareas, en orden:
 
@@ -233,7 +234,7 @@ flowchart TB
   user(["👤 Usuario"])
 
   subgraph stack["🐳 ② docker compose up · proyecto pokemon"]
-    web["web · :8000<br/>nginx + React SPA"]
+    web["web · localhost<br/>nginx + React SPA"]
     api["api<br/>NestJS · /api"]
     airflow["airflow · :8080<br/>DAG pokemon_etl"]
     migrate["migrate<br/>migraciones Prisma"]
@@ -320,7 +321,7 @@ Los límites los aplica `@nx/enforce-module-boundaries` (`eslint.config.mjs`) se
 
 ## 🔌 API
 
-`apps/api`, prefijo `/api` (en Docker, `http://localhost:8000/api`; con `pnpm dev`, `http://localhost:3000/api`). Lee la base `pokemon` (`DATABASE_URL`).
+`apps/api`, prefijo `/api` (en Docker, `http://localhost/api`, vía nginx; con `pnpm dev`, `http://localhost:3000/api`). Lee la base `pokemon` (`DATABASE_URL`).
 
 | Endpoint                            | Devuelve                                                                   |
 | ----------------------------------- | -------------------------------------------------------------------------- |
