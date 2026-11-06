@@ -33,23 +33,27 @@ La primera vez en una máquina, para el e2e: `pnpm exec playwright install --wit
 
 ## Servicios (Docker)
 
-Dos archivos de compose, con el mismo `.env` de la raíz (plantilla: `.env.example`; si falta una variable, compose no arranca):
+Dos archivos de compose del mismo proyecto (`pokemon`), con el mismo `.env` de la raíz (plantilla: `.env.example`; si falta una variable, compose no arranca):
 
-- `docker-compose.yml` (proyecto `pokemon`), **desarrollo**: PostgreSQL, las migraciones y Apache Airflow con la imagen oficial. La API y la web corren fuera de Docker con `pnpm dev`.
-- `docker-compose.prod.yml` (proyecto `pokemon-prod`), **producción**: incluye el anterior y suma la API y la web (ver [Producción](#producción-docker)).
+- `docker-compose.yml`, **todo el proyecto**: incluye `docker-compose.base.yml` y suma la API y la web en contenedores (ver [API y web en Docker](#api-y-web-en-docker)). Es lo que levanta `docker compose up`.
+- `docker-compose.base.yml`, **solo la base**: PostgreSQL, las migraciones y Apache Airflow con la imagen oficial. Para desarrollar con `pnpm dev` (API y web fuera de Docker).
+
+Al ser el mismo proyecto, comparten contenedores y volumen: lo que cargue el DAG se ve en los dos modos. La web en Docker usa el puerto 8000 y `pnpm dev` el 4200 y el 3000, así que pueden estar arriba a la vez.
 
 Con los valores de la plantilla:
 
-| Servicio      | Dónde                          | Credenciales            |
-| ------------- | ------------------------------ | ----------------------- |
-| PostgreSQL 18 | `localhost:5434`, db `pokemon` | `postgres` / `postgres` |
-| Airflow 3.3.2 | http://localhost:8080          | `airflow` / `airflow`   |
+| Servicio      | Dónde                                    | Credenciales            |
+| ------------- | ---------------------------------------- | ----------------------- |
+| Web y API     | http://localhost:8000 (API en `/api`)    | —                       |
+| PostgreSQL 18 | `localhost:5434`, db `pokemon`           | `postgres` / `postgres` |
+| Airflow 3.3.2 | http://localhost:8080                    | `airflow` / `airflow`   |
 
 ```sh
-cp .env.example .env      # la primera vez
-docker compose up -d      # la primera vez descarga ~2.6 GB de imágenes; Airflow tarda ~1 min en quedar listo
-docker compose down       # detiene; los datos quedan en el volumen
-docker compose down -v    # detiene y borra los datos
+cp .env.example .env                              # la primera vez
+docker compose up -d --build                      # todo; la primera vez descarga ~2.6 GB de imágenes y Airflow tarda ~1 min en quedar listo
+docker compose -f docker-compose.base.yml up -d   # solo Postgres, migraciones y Airflow (para pnpm dev)
+docker compose down                               # detiene todo (en los dos modos); los datos quedan en el volumen
+docker compose down -v                            # detiene y borra los datos
 ```
 
 - Un solo Postgres con dos bases: `pokemon` (la app) y `airflow` (estado interno de Airflow, creada al iniciar el volumen).
@@ -61,15 +65,10 @@ docker compose down -v    # detiene y borra los datos
 - Usuarios, claves y bases de Postgres (también los de Airflow) se crean junto con el volumen: para cambiarlos después, `docker compose down -v`.
 - El `DATABASE_URL` de `db/main/.env.example` y de `apps/api/.env.example` apunta a este Postgres, y `AIRFLOW_*` de `apps/api/.env.example` a este Airflow: si cambias el `.env` de la raíz, actualízalos también.
 
-### Producción (Docker)
+### API y web en Docker
 
-```sh
-docker compose -f docker-compose.prod.yml up -d --build   # web en http://localhost:8000 (WEB_PORT)
-docker compose -f docker-compose.prod.yml down            # -v para borrar sus datos
-```
-
-- Levanta lo mismo que desarrollo más `api` (`apps/api/Dockerfile`) y `web` (`apps/pokemon/Dockerfile`: la SPA servida con nginx, que reenvía `/api` a la API; mismo origen, sin CORS). La API no publica puerto: se llega por `http://localhost:8000/api`.
-- Proyecto aparte (`pokemon-prod`): su propio volumen, así que la base parte vacía (hay que correr el DAG). Publica los mismos puertos que desarrollo, así que no se levantan los dos a la vez.
+- `docker-compose.yml` suma a la base `api` (`apps/api/Dockerfile`) y `web` (`apps/pokemon/Dockerfile`: la SPA servida con nginx, que reenvía `/api` a la API; mismo origen, sin CORS). Son imágenes de producción: después de cambiar código, `docker compose up -d --build` las reconstruye.
+- La API no publica puerto: se llega por `http://localhost:8000/api` (`WEB_PORT`).
 - Variables propias en el `.env`: `WEB_PORT` y `API_CORS_ALLOW_ORIGINS` (la API en producción no acepta `*`). La API usa además `POSTGRES_*` y `AIRFLOW_ADMIN_*`.
 - La imagen de la API conserva la estructura del workspace: Node ejecuta `context/` y `db/main` como TypeScript y no quita tipos dentro de `node_modules`.
 
