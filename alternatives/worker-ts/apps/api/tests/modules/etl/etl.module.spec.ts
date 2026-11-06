@@ -12,7 +12,14 @@ describe('EtlModule', () => {
   it('registra la cola etl y arma los casos de uso sobre ella', async () => {
     const queue = { getJob: vi.fn().mockResolvedValue(undefined) };
     const moduleRef = await Test.createTestingModule({
-      imports: [BullModule.forRoot({}), EtlModule],
+      imports: [
+        BullModule.forRoot({
+          connection: {
+            url: process.env['TEST_REDIS_URL'] ?? 'redis://localhost:6411',
+          },
+        }),
+        EtlModule,
+      ],
     })
       .overrideProvider(getQueueToken(ETL_QUEUE))
       .useValue(queue)

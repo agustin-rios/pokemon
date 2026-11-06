@@ -2,6 +2,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { AttemptsExhaustedError, HttpStatusError } from '@pokemon/pokemon-data';
 import {
   ExecuteEtlRun,
+  type ExecuteEtlRunOptions,
   type RunExecution,
   type StepExecutor,
 } from '../../../src/application/use-cases/ExecuteEtlRun.ts';
@@ -15,7 +16,10 @@ import {
 } from '../../../src/index.ts';
 import { memoryProgress, ownedFence, step, stubLogger } from '../../stubs.ts';
 
-const OPTIONS = { stepDeadlineMs: 1_000, shutdownGraceMs: 1_000 };
+const OPTIONS: ExecuteEtlRunOptions = {
+  stepDeadlineMs: 1_000,
+  shutdownGraceMs: 1_000,
+};
 
 /** Pasos falsos que anotan el orden en que corren; `behaviors` cambia el de alguno. */
 function steps(
@@ -52,7 +56,7 @@ const untilAborted =
 function setup(
   behaviors: Partial<Record<StepName, StepExecutor['execute']>> = {},
   initial = memoryProgress(),
-  options = OPTIONS,
+  options: ExecuteEtlRunOptions = OPTIONS,
 ) {
   const logger = stubLogger();
   const s = steps(behaviors);
@@ -335,6 +339,34 @@ describe('ExecuteEtlRun', () => {
       // El paso queda `running`: la corrida se retoma desde él.
       expect(t.progress.current()[3]?.state).toBe('running');
       expect(t.calls).not.toContain('build_views');
+    });
+
+    it('un paso que no responde a la cancelación no retiene el apagado más allá de abandonSettleMs', async () => {
+      const shutdown = new AbortController();
+      let release: () => void = () => undefined;
+      const t = setup(
+        {
+          // Como una sentencia bloqueada en Postgres: ignora la señal.
+          load: async () => {
+            setTimeout(() => shutdown.abort(), 5);
+            await new Promise<void>((resolve) => {
+              release = resolve;
+            });
+          },
+        },
+        memoryProgress(),
+        { stepDeadlineMs: 5_000, shutdownGraceMs: 20, abandonSettleMs: 40 },
+      );
+
+      const started = performance.now();
+      const outcome = await t.processor.execute(
+        t.execution({ shutdown: shutdown.signal }),
+      );
+
+      expect(outcome).toEqual({ status: 'stopped', reason: 'abandoned' });
+      expect(performance.now() - started).toBeLessThan(1_000);
+      expect(t.progress.current()[3]?.state).toBe('running');
+      release();
     });
 
     it('un paso que termina dentro de la gracia se da por bueno', async () => {

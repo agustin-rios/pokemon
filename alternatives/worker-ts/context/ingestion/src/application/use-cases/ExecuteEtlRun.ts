@@ -34,6 +34,13 @@ export interface ExecuteEtlRunOptions {
   readonly stepDeadlineMs: number;
   /** Tras pedirse el apagado, lo que se le deja al paso en curso antes de cancelarlo. */
   readonly shutdownGraceMs: number;
+  /**
+   * Tras cancelar un paso por el apagado, lo que se espera a que termine de verdad antes de
+   * darlo por abandonado (por defecto 3 s). Una sentencia bloqueada en Postgres no se puede
+   * cancelar desde aquí: el cerco impide que confirme y Postgres la deshace al cerrarse la
+   * conexión, así que no se espera más allá de este plazo.
+   */
+  readonly abandonSettleMs?: number;
 }
 
 /**
@@ -75,7 +82,9 @@ const MAX_LOGGED_OUTPUT = 300;
  *   se cancela. En ambos casos la corrida queda sin finalizar para retomarla.
  * - Cancelación real: tras abortar espera a que el paso termine de verdad, así nunca
  *   queda un paso viejo escribiendo mientras la ejecución sigue con otra cosa. Los
- *   pasos escriben solo si el cerco lo permite, justo antes de confirmar.
+ *   pasos escriben solo si el cerco lo permite, justo antes de confirmar. Solo en el
+ *   apagado esa espera tiene tope (`abandonSettleMs`): el proceso se cierra y el cerco
+ *   garantiza que el paso colgado no escribe.
  *
  * Los fallos de los pasos se devuelven clasificados; los de la infraestructura (guardar
  * el progreso) se propagan.
@@ -173,7 +182,11 @@ export class ExecuteEtlRun {
     name: StepName,
     run: RunExecution,
   ): Promise<StepResult> {
-    const { stepDeadlineMs, shutdownGraceMs } = this.options;
+    const {
+      stepDeadlineMs,
+      shutdownGraceMs,
+      abandonSettleMs = 3_000,
+    } = this.options;
     const controller = new AbortController();
     let expired = false;
     let abandoned = false;
@@ -184,20 +197,30 @@ export class ExecuteEtlRun {
     }, stepDeadlineMs);
 
     let grace: NodeJS.Timeout | undefined;
+    let settle: NodeJS.Timeout | undefined;
+    let giveUp: () => void = () => undefined;
+    const gaveUp = new Promise<never>((_, reject) => {
+      giveUp = () => reject(new StepAbandonedError(name));
+    });
+    gaveUp.catch(() => undefined);
     const onShutdown = () => {
       grace = setTimeout(() => {
         abandoned = true;
         controller.abort(new StepAbandonedError(name));
+        settle = setTimeout(giveUp, abandonSettleMs);
       }, shutdownGraceMs);
     };
     run.shutdown?.addEventListener('abort', onShutdown, { once: true });
     if (run.shutdown?.aborted) onShutdown();
 
     try {
-      const output = await this.steps[name].execute({
+      const execution = this.steps[name].execute({
         signal: controller.signal,
         fence: run.fence,
       });
+      // Si se abandona un paso colgado, su rechazo posterior no debe quedar sin atender.
+      execution.catch(() => undefined);
+      const output = await Promise.race([execution, gaveUp]);
       return { status: 'done', output };
     } catch (error) {
       if (error instanceof FenceLostError) {
@@ -214,6 +237,7 @@ export class ExecuteEtlRun {
     } finally {
       clearTimeout(deadline);
       clearTimeout(grace);
+      clearTimeout(settle);
       run.shutdown?.removeEventListener('abort', onShutdown);
     }
   }
