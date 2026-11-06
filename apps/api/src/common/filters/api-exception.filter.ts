@@ -49,9 +49,7 @@ export class ApiExceptionFilter extends BaseExceptionFilter {
     }
     if (sqlState(exception) === UNDEFINED_TABLE) {
       super.catch(
-        new ServiceUnavailableException(
-          'Los datos todavía no están cargados.',
-        ),
+        new ServiceUnavailableException('Los datos todavía no están cargados.'),
         host,
       );
       return;
