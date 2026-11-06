@@ -1,0 +1,53 @@
+{
+  "name": "@pokemon/db-main",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "import": "./index.ts",
+      "default": "./index.ts"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "generate": "prisma generate",
+    "migrate:dev": "prisma migrate dev",
+    "migrate:deploy": "prisma migrate deploy",
+    "studio": "prisma studio"
+  },
+  "nx": {
+    "tags": [
+      "type:db",
+      "scope:db"
+    ],
+    "targets": {
+      "generate": {
+        "cache": true,
+        "inputs": [
+          "{projectRoot}/prisma/schema.prisma",
+          "{projectRoot}/prisma.config.ts"
+        ],
+        "outputs": [
+          "{projectRoot}/generated"
+        ]
+      },
+      "typecheck": {
+        "dependsOn": [
+          "generate",
+          "^typecheck"
+        ]
+      }
+    }
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "^7.10.1"
+  },
+  "devDependencies": {
+    "dotenv": "^17.4.2"
+  }
+}

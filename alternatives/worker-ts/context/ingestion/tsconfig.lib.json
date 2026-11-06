@@ -1,0 +1,27 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/tsconfig.lib.tsbuildinfo",
+    "emitDeclarationOnly": true,
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "forceConsistentCasingInFileNames": true,
+    "types": ["node"],
+    // La API ejecuta este código con Node quitando los tipos, sin compilarlo:
+    // solo sintaxis borrable (sin parameter properties, enums ni namespaces)
+    // e imports de tipos explícitos (import type).
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true
+  },
+  "include": ["src/**/*.ts"],
+  "references": [
+    {
+      "path": "../../db/main/tsconfig.lib.json"
+    },
+    {
+      "path": "../../libs/pokemon-data/tsconfig.lib.json"
+    }
+  ]
+}

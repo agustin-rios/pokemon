@@ -1,0 +1,33 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "tsBuildInfoFile": "dist/tsconfig.app.tsbuildinfo",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "emitDeclarationOnly": false,
+    "rewriteRelativeImportExtensions": true,
+    "sourceMap": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["out-tsc", "dist"],
+  "references": [
+    {
+      "path": "../../db/main/tsconfig.lib.json"
+    },
+    {
+      "path": "../../context/pokedex/tsconfig.lib.json"
+    },
+    {
+      "path": "../../context/ingestion/tsconfig.lib.json"
+    },
+    {
+      "path": "../../libs/pokemon-data/tsconfig.lib.json"
+    }
+  ]
+}

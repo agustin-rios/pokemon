@@ -1,0 +1,31 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compileOnSave": false,
+  "files": [],
+  "references": [
+    {
+      "path": "./apps/pokemon-e2e"
+    },
+    {
+      "path": "./apps/pokemon"
+    },
+    {
+      "path": "./context/pokedex"
+    },
+    {
+      "path": "./context/ingestion"
+    },
+    {
+      "path": "./libs/pokemon-data"
+    },
+    {
+      "path": "./db/main"
+    },
+    {
+      "path": "./apps/api"
+    },
+    {
+      "path": "./apps/worker"
+    }
+  ]
+}

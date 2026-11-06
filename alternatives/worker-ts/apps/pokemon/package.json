@@ -1,0 +1,28 @@
+{
+  "name": "@pokemon/pokemon",
+  "private": true,
+  "type": "module",
+  "nx": {
+    "tags": [
+      "type:app",
+      "scope:pokemon"
+    ]
+  },
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/material": "^9.5.0",
+    "@pokemon/context-pokedex": "workspace:*",
+    "@reduxjs/toolkit": "^2.14.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-redux": "^9.3.1",
+    "react-router": "^8.5.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^6.2.1"
+  }
+}

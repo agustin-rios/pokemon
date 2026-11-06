@@ -1,0 +1,35 @@
+# Contexto de build de las imágenes (backend y frontend): solo código fuente y
+# manifiestos. Las dependencias y los builds se generan dentro de la imagen.
+
+# Repo, editores y herramientas
+.git
+.github
+.vscode
+.idea
+.claude
+.nx
+
+# Dependencias y salidas de build, typecheck y tests
+**/node_modules
+.pnpm-store
+**/dist
+apps/*/build
+**/out-tsc
+**/coverage
+**/test-output
+**/*.tsbuildinfo
+tmp
+
+# Código generado (se regenera en el build)
+**/.react-router
+db/*/generated
+
+# Secretos: los .env no entran a una imagen
+**/.env
+**/.env.*
+!**/.env.example
+
+# Sistema
+**/.DS_Store
+**/Thumbs.db
+**/*.log

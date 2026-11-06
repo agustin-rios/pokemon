@@ -1,0 +1,45 @@
+# Dependencias
+node_modules
+.pnpm-store/
+
+# Salidas de build, typecheck y tests
+dist
+apps/*/build
+out-tsc
+tmp
+coverage
+test-output
+*.tsbuildinfo
+
+# Código generado
+.react-router
+db/*/generated
+
+# Nx
+.nx/cache
+.nx/workspace-data
+.nx/migrate-runs
+
+# Vite / Vitest
+vite.config.*.timestamp*
+vitest.config.*.timestamp*
+.vitest
+
+# Entorno (los .env.example sí se versionan)
+.env
+.env.local
+.env.*.local
+
+# Editores y sistema
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+.idea
+.DS_Store
+Thumbs.db
+
+# Claude Code
+.claude/worktrees
+.claude/settings.local.json

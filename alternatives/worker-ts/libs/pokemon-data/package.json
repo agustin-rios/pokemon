@@ -1,0 +1,23 @@
+{
+  "name": "@pokemon/pokemon-data",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Datos del pipeline: cliente de PokeAPI (con errores tipados y cancelación) y generador sintético compatible con Python. Sin base de datos ni cola.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./package.json": "./package.json"
+  },
+  "nx": {
+    "tags": [
+      "type:lib",
+      "scope:shared"
+    ]
+  }
+}

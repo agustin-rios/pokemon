@@ -1,0 +1,2 @@
+# Prettier ya excluye lo que ignora .gitignore; aquí solo va lo versionado que no se formatea.
+pnpm-lock.yaml

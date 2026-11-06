@@ -1,0 +1,14 @@
+{
+  "name": "@pokemon/pokemon-e2e",
+  "version": "0.0.1",
+  "private": true,
+  "nx": {
+    "tags": [
+      "type:e2e",
+      "scope:pokemon"
+    ],
+    "implicitDependencies": [
+      "@pokemon/pokemon"
+    ]
+  }
+}

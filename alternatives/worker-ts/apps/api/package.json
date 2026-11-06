@@ -1,0 +1,70 @@
+{
+  "name": "@pokemon/api",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nest build",
+    "dev": "nest start --watch",
+    "start": "node dist/main.js"
+  },
+  "nx": {
+    "tags": [
+      "type:app",
+      "scope:api"
+    ],
+    "targets": {
+      "build": {
+        "cache": true,
+        "inputs": [
+          "production",
+          "^production"
+        ],
+        "outputs": [
+          "{projectRoot}/dist"
+        ],
+        "dependsOn": [
+          "^build",
+          "^generate",
+          "typecheck"
+        ]
+      },
+      "dev": {
+        "continuous": true,
+        "dependsOn": [
+          "^generate",
+          "^typecheck"
+        ]
+      },
+      "start": {
+        "continuous": true,
+        "dependsOn": [
+          "build"
+        ]
+      }
+    }
+  },
+  "dependencies": {
+    "@nestjs/bullmq": "^12.0.0",
+    "@nestjs/common": "^12.3.3",
+    "@nestjs/config": "^12.1.0",
+    "@nestjs/core": "^12.3.3",
+    "@nestjs/platform-express": "^12.3.3",
+    "@pokemon/context-ingestion": "workspace:*",
+    "@pokemon/context-pokedex": "workspace:*",
+    "@pokemon/db-main": "workspace:*",
+    "@pokemon/pokemon-data": "workspace:*",
+    "bullmq": "~6.7.1",
+    "ioredis": "^5.11.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "tslib": "^2.9.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^12.0.11",
+    "@nestjs/testing": "^12.3.3",
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.19.2"
+  }
+}
