@@ -5,7 +5,8 @@
 #   docker compose -f docker-compose.base.yml up -d
 # Mismo proyecto (`pokemon`) que docker-compose.yml: comparten contenedores y volumen.
 # Todos los valores vienen de .env; si falta uno, compose no arranca (${VAR:?}).
-# Orden: postgres sano → migrate crea tablas y constraints → airflow (el DAG solo carga datos).
+# Orden: postgres sano → migrate crea tablas y constraints → airflow (el DAG genera los
+# CSV y los carga).
 name: pokemon
 
 # Base de la app dentro de la red de compose (la usan migrate y Airflow).
@@ -48,6 +49,9 @@ services:
 
   airflow:
     image: apache/airflow:3.3.2
+    # Con el uid del dueño de ./data (grupo 0, como pide la imagen oficial) para que
+    # el DAG pueda escribir ahí los CSV.
+    user: '${AIRFLOW_UID:?}:0'
     # standalone: migra su base y corre UI/API, scheduler, dag-processor y triggerer
     # en un solo contenedor (el modo de Airflow para desarrollo local).
     # Antes escribe la clave del usuario admin: Airflow necesita ese archivo con
@@ -65,14 +69,23 @@ services:
       AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS: ${AIRFLOW_ADMIN_USERNAME:?}:admin
       AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_PASSWORDS_FILE: /opt/airflow/passwords.json
       AIRFLOW__API_AUTH__JWT_SECRET: ${AIRFLOW_JWT_SECRET:?}
+      # Retomar rápido una tarea interrumpida (se reintenta solo esa; las anteriores ya
+      # terminaron). Si se cae todo Airflow, al volver la tarea queda huérfana y el
+      # scheduler la resetea en su próximo chequeo; si muere solo el proceso de la tarea,
+      # se da por muerta tras 60 s sin heartbeat. Con los defaults (300 s) tardaba 5 min.
+      AIRFLOW__SCHEDULER__ORPHANED_TASKS_CHECK_INTERVAL: '60'
+      AIRFLOW__SCHEDULER__TASK_INSTANCE_HEARTBEAT_TIMEOUT: '60'
       # Conexión `pokemon_db` a la base de la app: con ella el DAG carga y crea las vistas.
       AIRFLOW_CONN_POKEMON_DB: *pokemon-db-url
     ports:
       - '${AIRFLOW_PORT:?}:8080'
     volumes:
       - ./platform/airflow/dags:/opt/airflow/dags
-      # Los 6 CSV (pnpm ops data prepare). Solo lectura: el DAG nunca los modifica.
-      - ./data:/opt/airflow/data:ro
+      # Los CSV de cada corrida (data/runs/<run_id>/): los escriben las tareas extract
+      # y generate del DAG y los leen validate y load.
+      - ./data:/opt/airflow/data
+      # El generador del desafío, que corre la tarea generate.
+      - ./scripts:/opt/airflow/scripts:ro
       # Definición de las vistas (fuente única, la lee también el context). La ejecuta build_views.
       - ./db/main/sql:/opt/airflow/sql:ro
     depends_on:

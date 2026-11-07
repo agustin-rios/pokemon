@@ -91,7 +91,7 @@ def test_falta_un_archivo(tmp_path):
     del tables["captures"]
 
     assert errors_for(write(tmp_path, tables)) == [
-        "falta captures.csv (se genera con `pnpm ops data prepare`)"
+        "falta captures.csv (lo escriben las tareas extract y generate del DAG)"
     ]
 
 
@@ -201,7 +201,7 @@ def test_junta_todos_los_problemas_en_el_mensaje(tmp_path):
     # Sin types.csv no se cruzan sus referencias (evita un error por fila).
     assert str(info.value) == (
         "2 problema(s) en los CSV:\n"
-        "- falta types.csv (se genera con `pnpm ops data prepare`)\n"
+        "- falta types.csv (lo escriben las tareas extract y generate del DAG)\n"
         "- captures.csv línea 3: id 2 repetido (ya está en la línea 2)"
     )
 

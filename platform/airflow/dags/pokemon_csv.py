@@ -210,7 +210,7 @@ def _read_table(
 ) -> list[tuple[int, Row]] | None:
     """Filas tipadas con su número de línea; None si el archivo no se puede usar."""
     if not path.is_file():
-        errors.append(f"falta {path.name} (se genera con `pnpm ops data prepare`)")
+        errors.append(f"falta {path.name} (lo escriben las tareas extract y generate del DAG)")
         return None
     with path.open(newline="", encoding="utf-8") as file:
         reader = csv.DictReader(file)

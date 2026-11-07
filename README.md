@@ -22,15 +22,14 @@ Pokédex full-stack: un script baja los Pokémon a CSV, un DAG de Airflow los va
 
 ## 🚀 Cómo correrlo
 
-**Requisitos:** Docker con Compose v2, Node 24 (`nvm use`, ver `.nvmrc`), pnpm 10 (`corepack enable`) y Python 3.10+ (solo la librería estándar, para el generador).
+**Requisitos:** Docker con Compose v2, Node 24 (`nvm use`, ver `.nvmrc`) y pnpm 10 (`corepack enable`). Python 3.10+ solo si quieres generar los CSV en tu máquina con `pnpm ops` (opcional, ver [Datos de entrada](#-datos-de-entrada)).
 
 ```sh
-cp .env.example .env           # 1. variables: puertos, usuarios y claves
-pnpm ops data prepare          # 2. PokeAPI + generador → los 6 CSV en data/
-docker compose up -d --build   # 3. Postgres, migraciones, Airflow, API y web
+cp .env.example .env           # 1. variables: puertos, usuarios, claves y AIRFLOW_UID (tu `id -u`)
+docker compose up -d --build   # 2. Postgres, migraciones, Airflow, API y web
 ```
 
-**4.** Abrir **http://localhost** y apretar **«Cargar datos»**: dispara el DAG, que llena la base ([otras formas](#-disparar-el-dag)).
+**3.** Abrir **http://localhost** y apretar **«Cargar datos»**: dispara el DAG, que baja los datos de la PokeAPI, genera los sintéticos y llena la base ([otras formas](#-disparar-el-dag)).
 
 > [!IMPORTANT]
 > La base parte vacía: el DAG es la única vía por la que entran datos (no hay seeds ni dumps). Hasta que corra, cada sección de la web muestra «Cargar datos».
@@ -77,6 +76,7 @@ Los dos son el mismo proyecto de compose (`pokemon`), así que comparten contene
 - `api` (`apps/api/Dockerfile`) y `web` (`apps/pokemon/Dockerfile`) son imágenes de producción: después de cambiar código, `docker compose up -d --build` las reconstruye. La API no publica puerto: nginx la reenvía desde la web en `/api` (mismo origen, sin CORS), así que es la única puerta de entrada.
 - La imagen de la API conserva la estructura del workspace: Node ejecuta `context/` y `db/main` como TypeScript y no quita tipos dentro de `node_modules`.
 - Airflow corre en modo `standalone`: UI/API, scheduler, dag-processor y triggerer en un contenedor, con LocalExecutor. Es el modo de Airflow para desarrollo local; si un componente se cae, el contenedor sigue arriba y queda `unhealthy` (`docker compose restart airflow`).
+- Airflow corre con el usuario `AIRFLOW_UID` (grupo 0, como pide la imagen oficial) para poder escribir los CSV en `./data`: tiene que ser el dueño de esa carpeta (`id -u`, en Linux suele ser 1000).
 - Usuarios, claves y bases de Postgres (también los de Airflow) se crean junto con el volumen: para cambiarlos después, `docker compose down -v`.
 - El `DATABASE_URL` de `db/main/.env.example` y de `apps/api/.env.example` apunta a este Postgres, y `AIRFLOW_*` de `apps/api/.env.example` a este Airflow: si cambias el `.env` de la raíz, actualízalos también.
 
@@ -84,7 +84,9 @@ Los dos son el mismo proyecto de compose (`pokemon`), así que comparten contene
 
 ## 📥 Datos de entrada
 
-La extracción y el generador corren **en el host, a mano, antes de `docker compose up`** (paso 2 de arriba). Dejan los 6 CSV en `data/`, que Airflow monta en solo lectura: el DAG carga desde los CSV y nunca llama a la PokeAPI.
+Los 6 CSV los produce **el propio DAG**, donde sea que corra Airflow (tu máquina o la nube): las tareas `extract` y `generate` los escriben en `data/runs/<run_id>/`, la carpeta de esa corrida dentro de `data/` (montada en Airflow con lectura y escritura), y `validate` y `load` los leen de ahí. Para actualizar los datos basta con disparar el DAG: no hay que generar nada a mano ni subir archivos. Se conservan las carpetas de las últimas 5 corridas. `data/` no se versiona.
+
+Para desarrollo local, `pnpm ops` genera los mismos 6 CSV en tu máquina (byte a byte iguales a los del DAG), por ejemplo para revisarlos. El DAG no los usa.
 
 ```sh
 pnpm ops data scrape      # PokeAPI → pokemon.csv, types.csv, pokemon_types.csv (Pokémon 1–100; --limit para otro n)
@@ -102,9 +104,9 @@ pnpm ops help
 | `captures.csv`      | generador (5.000 en 12 meses)           | `id`, `trainer_id`, `pokemon_id`, `captured_at`, `level`, `location`               |
 | `battles.csv`       | generador (2.000)                       | `id`, `pokemon_a_id`, `pokemon_b_id`, `winner_id`, `fought_at`, `duration_seconds` |
 
-- **Extracción** (`platform/ops`, TypeScript sin dependencias): cada request tiene un timeout de 15 s y hasta 4 intentos con espera creciente ante errores de red, 429 y 5xx; cualquier otro error corta la extracción sin tocar `data/`.
-- **Generador** (`scripts/generate_pokemon_data.py`): el script del desafío, sin cambios (misma semilla y tamaños por defecto), con `--pokemon-csv data/pokemon.csv`.
-- Los CSV se escriben juntos al final: un fallo nunca deja `data/` a medias. `data/` no se versiona.
+- **Extracción**: en el DAG, `platform/airflow/dags/pokemon_extract.py` (Python, solo la librería estándar); en `pnpm ops`, `platform/ops` (TypeScript). Hacen lo mismo: cada request tiene un timeout de 15 s y hasta 4 intentos ante errores de red, 429 y 5xx, esperando una sola vez entre intentos (el `Retry-After` si viene; si no, 0,5 s, 1 s y 2 s). Cualquier otro status corta la extracción.
+- **Generador** (`scripts/generate_pokemon_data.py`): el script del desafío, sin cambios (misma semilla y tamaños por defecto), con `--pokemon-csv` apuntando al `pokemon.csv` recién extraído.
+- Los CSV de cada paso se escriben juntos al final (temporales y después rename): un fallo nunca deja archivos a medias.
 
 ## ⚡ Disparar el DAG
 
@@ -121,19 +123,28 @@ Tarda unos segundos. Tareas, en orden:
 
 ```mermaid
 flowchart LR
-  csv[/"📁 data/*.csv"/] --> validate["✅ validate<br/>lee y valida los 6 CSV"]
+  pokeapi(["🌐 PokeAPI"]) --> extract["🌐 extract<br/>PokeAPI → 3 CSV"]
+  extract --> generate["🎲 generate<br/>generador → 3 CSV"]
+  extract -.-> csv[/"📁 data/runs/&lt;run_id&gt;/<br/>6 CSV"/]
+  generate -.-> csv
+  generate --> validate["✅ validate<br/>lee y valida los 6 CSV"]
+  csv -.-> validate
   validate --> load["📦 load<br/>TRUNCATE + COPY<br/>en una transacción"]
   load --> views["🔎 build_views<br/>crea o actualiza las vistas"]
   load --> db[("🐘 base pokemon")]
   views --> db
 
+  classDef ext fill:#fff4e6,stroke:#f08c00,color:#5c3a00
   classDef task fill:#e7f5ff,stroke:#1c7ed6,color:#0b3d6b
   classDef store fill:#f3f0ff,stroke:#7048e8,color:#2e1a6b
-  class validate,load,views task
+  class pokeapi ext
+  class extract,generate,validate,load,views task
   class csv,db store
 ```
 
-1. **`validate`** lee los 6 CSV y los valida (`platform/airflow/dags/pokemon_csv.py`). La corrida falla, sin escribir nada, si:
+1. **`extract`** baja los Pokémon 1–100 de la PokeAPI y escribe `pokemon.csv`, `types.csv` y `pokemon_types.csv` en la carpeta de la corrida. También borra las carpetas de corridas viejas (deja las últimas 5).
+2. **`generate`** corre el generador con esos ids y escribe `trainers.csv`, `captures.csv` y `battles.csv`.
+3. **`validate`** lee los 6 CSV y los valida (`platform/airflow/dags/pokemon_csv.py`). La corrida falla, sin escribir nada, si:
    - falta un archivo, una columna o filas;
    - un valor está vacío o no se puede leer;
    - se repite un id o una clave única;
@@ -142,8 +153,27 @@ flowchart LR
 
    En `captures` y `battles`, que ninguna tabla referencia, una fila que rompe una regla se descarta y queda en el log (el generador produce algunas batallas con duración negativa). Un `base_experience` vacío (la PokeAPI lo trae `null` en algunos Pokémon) se carga como 0, el default de la columna. La columna `sprite` del CSV se carga en `sprite_url`.
 
-2. **`load`** vacía las 6 tablas y las carga en orden de FK (`types`, `pokemon`, `pokemon_types`, `trainers`, `captures`, `battles`) en una sola transacción. Es **idempotente**: otra corrida deja exactamente los mismos datos, y si algo falla la base queda como estaba.
-3. **`build_views`** crea o actualiza las vistas de las consultas con `db/main/sql/views.sql`.
+4. **`load`** vacía las 6 tablas y las carga en orden de FK (`types`, `pokemon`, `pokemon_types`, `trainers`, `captures`, `battles`) en una sola transacción. Es **idempotente**: otra corrida deja exactamente los mismos datos, y si algo falla la base queda como estaba.
+5. **`build_views`** crea o actualiza las vistas de las consultas con `db/main/sql/views.sql`.
+
+### Retomar sin repetir pasos
+
+Airflow guarda el estado de cada tarea, y cada una deja su resultado en la carpeta de la corrida: al retomar, **solo se vuelve a correr lo que no terminó**.
+
+| Qué pasa                                                  | Qué hace el DAG                                                                                                                                                   |
+| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Falla pasajera (PokeAPI caída, base que no responde)      | Reintenta **esa tarea** sola, hasta 3 veces (esperando 15 s, 30 s y 60 s)                                                                                         |
+| Airflow se cae a mitad de una tarea                       | Al volver, la tarea queda huérfana y el scheduler la retoma en ~1 min (`ORPHANED_TASKS_CHECK_INTERVAL` y `TASK_INSTANCE_HEARTBEAT_TIMEOUT` en 60 s en el compose) |
+| Error que reintentar no arregla (datos inválidos, un 404) | La corrida falla de una, sin gastar reintentos. Después de corregir, se retoma **la misma corrida** desde la tarea fallida                                        |
+
+Para retomar una corrida fallida:
+
+```sh
+# el runId lo devuelve POST /api/etl/runs (trae ':' y '+': va codificado en la URL)
+curl -X POST "http://localhost/api/etl/runs/$(jq -rn --arg id "$RUN_ID" '$id|@uri')/retry"
+```
+
+…o en la UI de Airflow: la corrida → la tarea fallida → **Clear** (con «Only failed» y «Downstream»). Las tareas que ya terminaron bien no se repiten. Lo comprobamos matando Airflow a mitad de `load`: al volver, `extract`, `generate` y `validate` siguieron en su primer intento y solo se repitió `load`.
 
 > [!TIP]
 > Un archivo de DAG nuevo tarda hasta 5 min en aparecer en Airflow (los existentes se re-leen cada 30 s). Para no esperar: `docker compose exec airflow airflow dags reserialize`.
@@ -223,20 +253,14 @@ Vistas (las agregaciones corren en Postgres; la API solo las lee):
 
 ```mermaid
 flowchart TB
-  subgraph prep["💻 ① Host · antes de docker compose up"]
-    direction LR
-    pokeapi(["🌐 PokeAPI"]) --> scrape["pnpm ops data scrape<br/>platform/ops"]
-    scrape -->|"pokemon.csv"| gen["generador<br/>generate_pokemon_data.py"]
-    scrape -->|"pokemon, types,<br/>pokemon_types"| data[/"📁 data/<br/>6 CSV"/]
-    gen -->|"trainers, captures,<br/>battles"| data
-  end
-
   user(["👤 Usuario"])
+  pokeapi(["🌐 PokeAPI"])
 
-  subgraph stack["🐳 ② docker compose up · proyecto pokemon"]
+  subgraph stack["🐳 docker compose up · proyecto pokemon"]
     web["web · localhost<br/>nginx + React SPA"]
     api["api<br/>NestJS · /api"]
     airflow["airflow · :8080<br/>DAG pokemon_etl"]
+    data[/"📁 data/runs/&lt;run_id&gt;/<br/>6 CSV por corrida"/]
     migrate["migrate<br/>migraciones Prisma"]
     subgraph pg["🐘 PostgreSQL 18 · :5434"]
       dbapp[("base pokemon<br/>tablas + vistas")]
@@ -244,13 +268,13 @@ flowchart TB
     end
   end
 
-  prep ~~~ user
-  prep ==>|"data/ montada<br/>en solo lectura"| airflow
   user -->|HTTP| web
   web -->|"proxy /api"| api
-  api -->|"POST /etl/runs"| airflow
+  api -->|"POST /etl/runs<br/>…/retry"| airflow
   api -->|"lee tablas y vistas"| dbapp
-  airflow -->|"validate → load<br/>→ build_views"| dbapp
+  pokeapi -->|"extract"| airflow
+  airflow <-->|"extract y generate escriben;<br/>validate y load leen"| data
+  airflow -->|"load → build_views"| dbapp
   airflow --- dbaf
   migrate -->|"crea tablas<br/>y constraints"| dbapp
 
@@ -260,11 +284,11 @@ flowchart TB
   classDef store fill:#f3f0ff,stroke:#7048e8,color:#2e1a6b
   class user,pokeapi ext
   class web,api app
-  class scrape,gen,airflow,migrate etl
+  class airflow,migrate etl
   class data,dbapp,dbaf store
 ```
 
-- **Orden de arranque:** Postgres sano → `migrate` aplica las migraciones de Prisma (tablas y constraints) y termina → Airflow, API y web. El DAG no crea tablas: solo carga datos y crea las vistas.
+- **Orden de arranque:** Postgres sano → `migrate` aplica las migraciones de Prisma (tablas y constraints) y termina → Airflow, API y web. El DAG no crea tablas: genera los CSV, los carga y crea las vistas.
 - **Un solo Postgres con dos bases:** `pokemon` (la app; Airflow escribe con la conexión `pokemon_db` y la API lee) y `airflow` (estado interno de Airflow, creada al iniciar el volumen).
 - **Una sola definición de las vistas:** `db/main/sql/views.sql`, montado en Airflow en solo lectura. El DAG las crea con ese archivo y la API las lee; un test de contrato en `context/pokedex` verifica que ambos lados calcen.
 - **Web** (`apps/pokemon`): SPA de Vite con React Router (`/items`, `/item/:id` y `/reports/*`), estado y caché de respuestas en Redux Toolkit, UI con MUI. Habla con la API solo por HTTP en `/api` (en Docker, nginx la reenvía; en dev, el proxy de Vite a `:3000`).
@@ -306,7 +330,7 @@ flowchart LR
 | `@pokemon/db-main`         | `db/main`          | Prisma 7 + PostgreSQL ([README](db/main/README.md))                   |
 | `@pokemon/ops`             | `platform/ops`     | CLI de operaciones (`pnpm ops`), sin dependencias                     |
 
-Además: `platform/airflow/` (DAG `pokemon_etl` y su validación en `dags/`, tests en `tests/`), `scripts/` (el generador) y `data/` (los CSV, no se versiona).
+Además: `platform/airflow/` (DAG `pokemon_etl`, su extracción y su validación en `dags/`, tests en `tests/`), `scripts/` (el generador, que corre el DAG) y `data/` (los CSV de cada corrida, no se versiona).
 
 - **app** (`apps/`):
   - `pokemon` (web): estado en Redux Toolkit (`src/app/store.ts`, un slice por feature en `src/features/`), rutas en `src/routes.tsx`. De `context/pokedex` importa solo tipos (no entran al bundle), así web y API comparten el contrato.
@@ -332,11 +356,13 @@ Los límites los aplica `@nx/enforce-module-boundaries` (`eslint.config.mjs`) se
 | `GET /reports/top-trainers`         | Consulta B: top 3 entrenadores por capturas en cada región                 |
 | `GET /reports/level-classification` | Consulta C: por tipo, capturas con nivel ≥ 50 y su porcentaje              |
 | `POST /etl/runs`                    | Dispara el DAG `pokemon_etl` en Airflow; `202` con la corrida encolada     |
+| `POST /etl/runs/:runId/retry`       | Retoma esa corrida desde sus tareas fallidas; `202` con la corrida         |
 
 | Caso                                          | Código |
 | --------------------------------------------- | :----: |
 | Entrada inválida                              | `400`  |
-| Id inexistente                                | `404`  |
+| Id o corrida inexistente                      | `404`  |
+| Retry de una corrida sin tareas fallidas      | `409`  |
 | Datos aún no disponibles (la vista no existe) | `503`  |
 | Airflow no responde                           | `503`  |
 | Airflow responde un error                     | `502`  |
