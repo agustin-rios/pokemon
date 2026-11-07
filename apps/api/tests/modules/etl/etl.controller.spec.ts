@@ -1,5 +1,7 @@
 import {
   BadGatewayException,
+  ConflictException,
+  NotFoundException,
   ServiceUnavailableException,
   type INestApplication,
 } from '@nestjs/common';
@@ -11,7 +13,7 @@ import {
 import { startApp } from '../../helpers.ts';
 
 describe('EtlController', () => {
-  const airflow = { triggerDag: vi.fn() };
+  const airflow = { triggerDag: vi.fn(), retryDagRun: vi.fn() };
   let app: INestApplication;
   let url: (path: string) => string;
 
@@ -38,6 +40,37 @@ describe('EtlController', () => {
     expect(res.status).toBe(202);
     expect(await res.json()).toEqual(run);
     expect(airflow.triggerDag).toHaveBeenCalledWith(POKEMON_ETL_DAG_ID);
+  });
+
+  it('POST /etl/runs/:runId/retry retoma esa corrida → 202', async () => {
+    const runId = 'manual__2026-11-05T17:00:00+00:00';
+    const run = {
+      dagId: 'pokemon_etl',
+      runId,
+      state: 'queued',
+      queuedAt: '2026-11-05T17:00:00Z',
+    };
+    airflow.retryDagRun.mockResolvedValue(run);
+
+    const res = await fetch(
+      url(`/etl/runs/${encodeURIComponent(runId)}/retry`),
+      { method: 'POST' },
+    );
+
+    expect(res.status).toBe(202);
+    expect(await res.json()).toEqual(run);
+    expect(airflow.retryDagRun).toHaveBeenCalledWith(POKEMON_ETL_DAG_ID, runId);
+  });
+
+  it.each([
+    [new NotFoundException('No existe la corrida x'), 404],
+    [new ConflictException('La corrida no tiene tareas fallidas'), 409],
+  ])('retry: si el cliente lanza %s → %i', async (error, status) => {
+    airflow.retryDagRun.mockRejectedValue(error);
+
+    const res = await fetch(url('/etl/runs/x/retry'), { method: 'POST' });
+
+    expect(res.status).toBe(status);
   });
 
   it.each([

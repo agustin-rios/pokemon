@@ -2,7 +2,9 @@ import { createServer, type IncomingMessage, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import {
   BadGatewayException,
+  ConflictException,
   Logger,
+  NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { AirflowClient } from '../../../src/modules/etl/airflow.client.ts';
@@ -132,6 +134,77 @@ describe('AirflowClient', () => {
       }
     },
   );
+
+  describe('retryDagRun', () => {
+    const runId = 'manual__2026-11-05T17:00:00+00:00';
+    const encoded = encodeURIComponent(runId);
+    const clearPath = 'POST /api/v2/dags/pokemon_etl/clearTaskInstances';
+    const token: [number, unknown] = [201, { access_token: 'jwt' }];
+
+    async function retry(routes: Record<string, [number, unknown]>) {
+      const { server, received } = fakeAirflow({
+        'POST /auth/token': token,
+        ...routes,
+      });
+      const url = await listen(server);
+      const client = new AirflowClient({ url, username: 'a', password: 'b' });
+      try {
+        return {
+          result: await client.retryDagRun('pokemon_etl', runId).then(
+            (run) => ({ run }),
+            (error: unknown) => ({ error }),
+          ),
+          received,
+        };
+      } finally {
+        await close(server);
+      }
+    }
+
+    it('limpia solo las tareas fallidas (y las que dependen de ellas) de esa corrida', async () => {
+      const { result, received } = await retry({
+        [clearPath]: [200, { task_instances: [{}, {}], total_entries: 2 }],
+        [`GET /api/v2/dags/pokemon_etl/dagRuns/${encoded}`]: [200, dagRun],
+      });
+
+      expect(result).toEqual({
+        run: {
+          dagId: 'pokemon_etl',
+          runId,
+          state: 'queued',
+          queuedAt: '2026-11-05T17:00:00Z',
+        },
+      });
+      expect(received[1]).toEqual({
+        method: 'POST',
+        url: '/api/v2/dags/pokemon_etl/clearTaskInstances',
+        authorization: 'Bearer jwt',
+        body: {
+          dry_run: false,
+          dag_run_id: runId,
+          only_failed: true,
+          include_downstream: true,
+          reset_dag_runs: true,
+        },
+      });
+    });
+
+    it('la corrida no existe → 404', async () => {
+      const { result } = await retry({
+        [clearPath]: [404, { detail: 'DagRun not found' }],
+      });
+
+      expect(result).toEqual({ error: expect.any(NotFoundException) });
+    });
+
+    it('sin tareas fallidas → 409', async () => {
+      const { result } = await retry({
+        [clearPath]: [200, { task_instances: [], total_entries: 0 }],
+      });
+
+      expect(result).toEqual({ error: expect.any(ConflictException) });
+    });
+  });
 
   it('Airflow no responde → 503', async () => {
     const { server } = fakeAirflow({});
